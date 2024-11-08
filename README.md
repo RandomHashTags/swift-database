@@ -1,7 +1,7 @@
 # Swift Database
 Swift Database is a standalone database library that enables communication to your favorite databases, using the bare minimum dependencies. We do not lock this library behind using proprietary server implementations.
 
-It utilizes the latest features of the Swift Language like concurrency, Actors, Macros, and memory ownership to push performance to the absolute limits. We will be adopting more Swift features, like `~Copyable`, `~Escapable`, and borrowing array elements upon iteration when they are feature-complete.
+It utilizes the latest features of the Swift Language like concurrency, Actors, Macros, and memory ownership to push performance to the absolute limits. We will be adopting more Swift features, like `~Copyable`, `~Escapable`, and borrowing array elements upon iteration when they are feature-complete (and upcoming Swift Package Manager features).
 
 ## Expected features
 - support for the most popular databases ranked by market share (plus others that we find appealing)
