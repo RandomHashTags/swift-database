@@ -1,15 +1,10 @@
-//
-//  PostgresDatabase.swift
-//
-//
-//  Created by Evan Anderson on 11/7/24.
-//
 
 import SQL
 
-public struct PostgresCommand : SQLCommand {
+public struct PostgresCommand: SQLCommand {
     public let sqlValue:String
 
+    @usableFromInline
     init(_ sqlValue: String) {
         self.sqlValue = sqlValue
     }
@@ -17,15 +12,23 @@ public struct PostgresCommand : SQLCommand {
         sqlValue = value
     }
 }
-public extension PostgresCommand {
-    static func unsafeRaw(_ sql: String) -> PostgresCommand { .init(sql) }
-    static func unsafeExpression(command: PostgresCommand, _ arguments: PostgresCommand...) -> PostgresCommand {
+ extension PostgresCommand {
+    @inlinable
+    public static func unsafeRaw(_ sql: String) -> PostgresCommand {
+        .init(sql)
+    }
+
+    @inlinable
+    public static func unsafeExpression(
+        command: PostgresCommand,
+        _ arguments: PostgresCommand...
+    ) -> PostgresCommand {
         unsafeRaw(command.sqlValue + arguments.map({ $0.sqlValue }).joined(separator: " "))
     }
 }
 // MARK: Create Type
-public extension PostgresCommand {
-    static func createType(
+extension PostgresCommand {
+    public static func createType(
         name: String,
         attributeName: String,
         dataType: String,
@@ -60,69 +63,69 @@ public extension PostgresCommand {
 }
 // MARK: Literal commands
 public extension PostgresCommand {
-    static let abort:PostgresCommand                   = unsafeRaw("ABORT")
+    static let abort                   = unsafeRaw("ABORT")
     static func alter(_ alterable: Alterable) -> PostgresCommand { unsafeRaw("ALTER " + alterable.rawValue) }
-    static let analyze:PostgresCommand                 = unsafeRaw("ANALYZE")
-    static let begin:PostgresCommand                   = unsafeRaw("BEGIN")
-    static let call:PostgresCommand                    = unsafeRaw("CALL")
-    static let checkpoint:PostgresCommand              = unsafeRaw("CHECKPOINT")
-    static let close:PostgresCommand                   = unsafeRaw("CLOSE")
-    static let cluster:PostgresCommand                 = unsafeRaw("CLUSTER")
-    static let comment:PostgresCommand                 = unsafeRaw("COMMENT")
-    static let commit:PostgresCommand                  = unsafeRaw("COMMIT")
-    static let commitPrepared:PostgresCommand          = unsafeRaw("COMMIT PREPARED")
-    static let copy:PostgresCommand                    = unsafeRaw("COPY")
+    static let analyze                 = unsafeRaw("ANALYZE")
+    static let begin                   = unsafeRaw("BEGIN")
+    static let call                    = unsafeRaw("CALL")
+    static let checkpoint              = unsafeRaw("CHECKPOINT")
+    static let close                   = unsafeRaw("CLOSE")
+    static let cluster                 = unsafeRaw("CLUSTER")
+    static let comment                 = unsafeRaw("COMMENT")
+    static let commit                  = unsafeRaw("COMMIT")
+    static let commitPrepared          = unsafeRaw("COMMIT PREPARED")
+    static let copy                    = unsafeRaw("COPY")
     static func create(_ creatable: Creatable) -> PostgresCommand { unsafeRaw("CREATE " + creatable.rawValue) }
-    static let deallocate:PostgresCommand              = unsafeRaw("DEALLOCATE")
-    static let declare:PostgresCommand                 = unsafeRaw("DECLARE")
-    static let delete:PostgresCommand                  = unsafeRaw("DELETE")
-    static let discard:PostgresCommand                 = unsafeRaw("DISCARD")
-    static let `do`:PostgresCommand                    = unsafeRaw("DO")
+    static let deallocate              = unsafeRaw("DEALLOCATE")
+    static let declare                 = unsafeRaw("DECLARE")
+    static let delete                  = unsafeRaw("DELETE")
+    static let discard                 = unsafeRaw("DISCARD")
+    static let `do`                    = unsafeRaw("DO")
     // drop
-    static let end:PostgresCommand                     = unsafeRaw("END")
-    static let execute:PostgresCommand                 = unsafeRaw("EXECUTE")
-    static let explain:PostgresCommand                 = unsafeRaw("EXPLAIN")
-    static let fetch:PostgresCommand                   = unsafeRaw("FETCH")
-    static let grant:PostgresCommand                   = unsafeRaw("GRANT")
-    static let importForeignSchema:PostgresCommand     = unsafeRaw("IMPORT FOREIGN SCHEMA")
-    static let insert:PostgresCommand                  = unsafeRaw("INSERT")
-    static let load:PostgresCommand                    = unsafeRaw("LOAD")
-    static let lock:PostgresCommand                    = unsafeRaw("LOCK")
-    static let merge:PostgresCommand                   = unsafeRaw("MERGE")
-    static let move:PostgresCommand                    = unsafeRaw("MOVE")
-    static let notify:PostgresCommand                  = unsafeRaw("NOTIFY")
-    static let prepare:PostgresCommand                 = unsafeRaw("PREPARE")
-    static let prepareTransaction:PostgresCommand      = unsafeRaw("PREPARE TRANSACTION")
-    static let reassignOwned:PostgresCommand           = unsafeRaw("REASSIGN OWNED")
-    static let refreshMaterializedView:PostgresCommand = unsafeRaw("REFRESH MATERIALIZED VIEW")
-    static let reindex:PostgresCommand                 = unsafeRaw("REINDEX")
-    static let releaseSavepoint:PostgresCommand        = unsafeRaw("RELEASE SAVEPOINT")
-    static let reset:PostgresCommand                   = unsafeRaw("RESET")
-    static let revoke:PostgresCommand                  = unsafeRaw("REVOKE")
-    static let rollback:PostgresCommand                = unsafeRaw("ROLLBACK")
-    static let rollbackPrepared:PostgresCommand        = unsafeRaw("ROLLBACK PREPARED")
-    static let rollbackToSavepoint:PostgresCommand     = unsafeRaw("ROLLBACK TO SAVEPOINT")
-    static let savepoint:PostgresCommand               = unsafeRaw("SAVEPOINT")
-    static let securityLabel:PostgresCommand           = unsafeRaw("SECURITY LABEL")
-    static let select:PostgresCommand                  = unsafeRaw("SELECT")
-    static let selectInto:PostgresCommand              = unsafeRaw("SELECT INTO")
-    static let set:PostgresCommand                     = unsafeRaw("SET")
-    static let setConstraints:PostgresCommand          = unsafeRaw("SET CONSTRAINTS")
-    static let setRole:PostgresCommand                 = unsafeRaw("SET ROLE")
-    static let setSessionAuthorization:PostgresCommand = unsafeRaw("SET SESSION AUTHORIZATION")
-    static let setTransaction:PostgresCommand          = unsafeRaw("SET TRANSACTION")
-    static let show:PostgresCommand                    = unsafeRaw("show")
-    static let startTransaction:PostgresCommand        = unsafeRaw("START TRANSACTION")
-    static let truncate:PostgresCommand                = unsafeRaw("TRUNCATE")
-    static let unlisten:PostgresCommand                = unsafeRaw("UNLISTEN")
-    static let update:PostgresCommand                  = unsafeRaw("UPDATE")
-    static let vacuum:PostgresCommand                  = unsafeRaw("VACUUM")
-    static let values:PostgresCommand                  = unsafeRaw("VALUES")
+    static let end                     = unsafeRaw("END")
+    static let execute                 = unsafeRaw("EXECUTE")
+    static let explain                 = unsafeRaw("EXPLAIN")
+    static let fetch                   = unsafeRaw("FETCH")
+    static let grant                   = unsafeRaw("GRANT")
+    static let importForeignSchema     = unsafeRaw("IMPORT FOREIGN SCHEMA")
+    static let insert                  = unsafeRaw("INSERT")
+    static let load                    = unsafeRaw("LOAD")
+    static let lock                    = unsafeRaw("LOCK")
+    static let merge                   = unsafeRaw("MERGE")
+    static let move                    = unsafeRaw("MOVE")
+    static let notify                  = unsafeRaw("NOTIFY")
+    static let prepare                 = unsafeRaw("PREPARE")
+    static let prepareTransaction      = unsafeRaw("PREPARE TRANSACTION")
+    static let reassignOwned           = unsafeRaw("REASSIGN OWNED")
+    static let refreshMaterializedView = unsafeRaw("REFRESH MATERIALIZED VIEW")
+    static let reindex                 = unsafeRaw("REINDEX")
+    static let releaseSavepoint        = unsafeRaw("RELEASE SAVEPOINT")
+    static let reset                   = unsafeRaw("RESET")
+    static let revoke                  = unsafeRaw("REVOKE")
+    static let rollback                = unsafeRaw("ROLLBACK")
+    static let rollbackPrepared        = unsafeRaw("ROLLBACK PREPARED")
+    static let rollbackToSavepoint     = unsafeRaw("ROLLBACK TO SAVEPOINT")
+    static let savepoint               = unsafeRaw("SAVEPOINT")
+    static let securityLabel           = unsafeRaw("SECURITY LABEL")
+    static let select                  = unsafeRaw("SELECT")
+    static let selectInto              = unsafeRaw("SELECT INTO")
+    static let set                     = unsafeRaw("SET")
+    static let setConstraints          = unsafeRaw("SET CONSTRAINTS")
+    static let setRole                 = unsafeRaw("SET ROLE")
+    static let setSessionAuthorization = unsafeRaw("SET SESSION AUTHORIZATION")
+    static let setTransaction          = unsafeRaw("SET TRANSACTION")
+    static let show                    = unsafeRaw("show")
+    static let startTransaction        = unsafeRaw("START TRANSACTION")
+    static let truncate                = unsafeRaw("TRUNCATE")
+    static let unlisten                = unsafeRaw("UNLISTEN")
+    static let update                  = unsafeRaw("UPDATE")
+    static let vacuum                  = unsafeRaw("VACUUM")
+    static let values                  = unsafeRaw("VALUES")
 }
 
 // MARK: Alterable
-public extension PostgresCommand {
-    enum Alterable : String {
+extension PostgresCommand {
+    public enum Alterable: String {
         case aggregate               = "AGGREGATE"
         case collation               = "COLLATION"
         case database                = "DATABASE"
@@ -167,8 +170,8 @@ public extension PostgresCommand {
     }
 }
 // MARK: Creatable
-public extension PostgresCommand {
-    enum Creatable : String {
+extension PostgresCommand {
+    public enum Creatable: String {
         case accessMethod            = "ACCESS METHOD"
         case aggregate               = "AGGREGATE"
         case cast                    = "CAST"

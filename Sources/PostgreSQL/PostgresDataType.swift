@@ -1,13 +1,7 @@
-//
-//  PostgresDataType.swift
-//
-//
-//  Created by Evan Anderson on 11/7/24.
-//
 
 import SwiftDatabase
 
-public indirect enum PostgresDataType : DatabaseDataType {
+public indirect enum PostgresDataType: DatabaseDataType {
 
     // MARK: Numeric types
     // https://www.postgresql.org/docs/current/datatype-numeric.html

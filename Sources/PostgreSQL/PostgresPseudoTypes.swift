@@ -1,11 +1,5 @@
-//
-//  PostgresPseudoTypes.swift
-//
-//
-//  Created by Evan Anderson on 11/7/24.
-//
 
-public enum PostgresPseudoTypes : String {
+public enum PostgresPseudoTypes: String {
     case any
     case anyelement
     case anyarray
