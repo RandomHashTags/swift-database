@@ -3,14 +3,65 @@
 import PackageDescription
 import CompilerPluginSupport
 
+let traits:Set<Trait> = [
+    .default(enabledTraits: ["PostgreSQL"]),
+
+    .trait(name: "SwiftDatabaseBlueprint"),
+    .trait(
+        name: "SQLBlueprint",
+        enabledTraits: ["SwiftDatabaseBlueprint"]
+    ),
+    .trait(
+        name: "NoSQLBlueprint",
+        enabledTraits: ["SwiftDatabaseBlueprint"]
+    ),
+
+    .trait(
+        name: "MongoDBBlueprint",
+        enabledTraits: ["NoSQLBlueprint"]
+    ),
+    .trait(
+        name: "MongoDB",
+        enabledTraits: ["MongoDBBlueprint"]
+    ),
+
+    .trait(
+        name: "OracleBlueprint",
+        enabledTraits: ["SQLBlueprint"]
+    ),
+    .trait(
+        name: "Oracle",
+        enabledTraits: ["OracleBlueprint"]
+    ),
+
+    .trait(
+        name: "MicrosoftSQLBlueprint",
+        enabledTraits: ["SQLBlueprint"]
+    ),
+    .trait(
+        name: "MicrosoftSQL",
+        enabledTraits: ["MicrosoftSQLBlueprint"]
+    ),
+
+    .trait(
+        name: "PostgreSQLBlueprint",
+        enabledTraits: ["SQLBlueprint"]
+    ),
+    .trait(
+        name: "PostgreSQL",
+        enabledTraits: ["PostgreSQLBlueprint"]
+    )
+]
+
 let package = Package(
     name: "swift-database",
     products: [
         .library(
-            name: "SwiftDatabase",
-            targets: ["SwiftDatabase"]
+            name: "SwiftDatabaseBlueprint",
+            targets: ["SwiftDatabaseBlueprint"]
         ),
     ],
+    traits: traits,
     dependencies: [
         // Macros
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.1"),
@@ -19,9 +70,12 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.6.3"),
     ],
     targets: [
+        // MARK: SwiftDatabaseUtilities
         .target(
             name: "SwiftDatabaseUtilities"
         ),
+
+        // MARK: SwiftDatabaseMacros
         .macro(
             name: "SwiftDatabaseMacros",
             dependencies: [
@@ -33,61 +87,83 @@ let package = Package(
             ]
         ),
 
+        // MARK: SwiftDatabaseBlueprint
         .target(
-            name: "SwiftDatabase",
+            name: "SwiftDatabaseBlueprint",
             dependencies: [
                 "SwiftDatabaseUtilities",
                 "SwiftDatabaseMacros"
             ]
         ),
 
+        // MARK: NoSQLBlueprint
         .target(
-            name: "NoSQL",
+            name: "NoSQLBlueprint",
             dependencies: [
-                "SwiftDatabase"
-            ]
-        ),
-        .target(
-            name: "MongoDB",
-            dependencies: [
-                "NoSQL"
+                "SwiftDatabaseBlueprint"
             ]
         ),
 
+        // MARK: MongoDBBlueprint
         .target(
-            name: "SQL",
+            name: "MongoDBBlueprint",
             dependencies: [
-                "SwiftDatabase"
+                "NoSQLBlueprint"
             ]
         ),
+
+        // MARK: SQLBlueprint
         .target(
-            name: "Oracle",
+            name: "SQLBlueprint",
             dependencies: [
-                "SQL"
+                "SwiftDatabaseBlueprint"
             ]
         ),
+
+        // MARK: OracleBlueprint
         .target(
-            name: "MicrosoftSQL",
+            name: "OracleBlueprint",
             dependencies: [
-                "SQL"
+                "SQLBlueprint"
             ]
         ),
+
+        // MARK: MicrosoftSQLBlueprint
         .target(
-            name: "PostgreSQL",
+            name: "MicrosoftSQLBlueprint",
             dependencies: [
-                "SQL"
+                "SQLBlueprint"
+            ],
+        ),
+
+        // MARK: PostgreSQLBlueprint
+        .target(
+            name: "PostgreSQLBlueprint",
+            dependencies: [
+                "SQLBlueprint"
             ]
         ),
+
+        // MARK: MySQLBlueprint
         .target(
-            name: "MySQL",
+            name: "MySQLBlueprint",
             dependencies: [
-                "SQL"
+                "SQLBlueprint"
             ]
         ),
 
         .testTarget(
             name: "swift-databaseTests",
-            dependencies: ["SwiftDatabase"]
+            dependencies: [
+                "SwiftDatabaseBlueprint",
+                "NoSQLBlueprint",
+                "MongoDBBlueprint",
+                "SQLBlueprint",
+                "OracleBlueprint",
+                "MicrosoftSQLBlueprint",
+                "PostgreSQLBlueprint",
+                "MySQLBlueprint"
+            ]
         ),
     ]
 )
