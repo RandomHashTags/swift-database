@@ -1,5 +1,5 @@
 
-import SwiftDatabase
+import SwiftDatabaseBlueprint
 
 public protocol NoSQLDatabaseProtocol: DatabaseProtocol {
 }

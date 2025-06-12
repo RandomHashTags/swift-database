@@ -1,5 +1,5 @@
 
-import SwiftDatabase
+import SwiftDatabaseBlueprint
 
 public protocol SQLAttributeProtocol: Sendable {
     associatedtype DataType: DatabaseDataTypeProtocol

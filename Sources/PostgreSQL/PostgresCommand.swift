@@ -1,7 +1,7 @@
 
-import SQL
+import PostgreSQLBlueprint
 
-public struct PostgresCommand: SQLCommandProtocol {
+public struct PostgresCommand: PostgresCommandProtocol {
     public let sqlValue:String
 
     @usableFromInline
@@ -12,7 +12,7 @@ public struct PostgresCommand: SQLCommandProtocol {
         sqlValue = value
     }
 }
- extension PostgresCommand {
+extension PostgresCommand {
     @inlinable
     public static func unsafeRaw(_ sql: String) -> PostgresCommand {
         .init(sql)

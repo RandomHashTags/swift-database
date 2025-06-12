@@ -1,6 +1,6 @@
 
-import SQL
-import SwiftDatabase
+import SQLBlueprint
+import SwiftDatabaseBlueprint
 
-public protocol PostgresDatabaseProtocol: SQLDatabaseProtocol where Command == PostgresCommand {
+public protocol PostgresDatabaseProtocol: SQLDatabaseProtocol where Command: PostgresCommandProtocol {
 }

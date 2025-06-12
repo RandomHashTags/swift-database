@@ -1,5 +1,5 @@
 
-import SwiftDatabase
+import SwiftDatabaseBlueprint
 
 public protocol SQLRecordProtocol: MigratableProtocol {
     associatedtype IDValue: Codable & Hashable & Sendable

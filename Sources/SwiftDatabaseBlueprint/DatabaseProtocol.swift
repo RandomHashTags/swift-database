@@ -14,12 +14,6 @@ public protocol DatabaseProtocol: Sendable {
     /// How this database is stored.
     var storageMethod: DatabaseStorageMethod { get }
 
-    /// Setup a connection to the database.
-    func connect() async throws
-
-    /// Close the connection to the database.
-    func disconnect() throws
-
     /// Executes a command on the database.
     func execute(_ command: Command) async throws
 }

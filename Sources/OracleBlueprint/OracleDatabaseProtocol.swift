@@ -1,5 +1,5 @@
 
-import SQL
+import SQLBlueprint
 
 public protocol OracleDatabaseProtocol: SQLDatabaseProtocol {
 }

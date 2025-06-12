@@ -1,5 +1,5 @@
 import Testing
-@testable import SwiftDatabase
+@testable import SwiftDatabaseBlueprint
 
 @Test func example() async throws {
     //let db = PostgresDatabase()

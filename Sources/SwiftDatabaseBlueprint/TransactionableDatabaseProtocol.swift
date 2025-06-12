@@ -1,7 +1,7 @@
 
 public protocol TransactionableDatabaseProtocol: DatabaseProtocol {
-    associatedtype Transaction: DatabaseTransactionProtocol
+    /*associatedtype Transaction: DatabaseTransactionProtocol
 
     @discardableResult
-    func transaction<V>(_ work: (borrowing Transaction) async throws -> V) async rethrows -> V
+    func transaction<V>(_ work: (borrowing Transaction) async throws -> V) async rethrows -> V*/
 }

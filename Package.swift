@@ -143,6 +143,13 @@ let package = Package(
                 "SQLBlueprint"
             ]
         ),
+        // MARK: PostgreSQL
+        .target(
+            name: "PostgreSQL",
+            dependencies: [
+                "PostgreSQLBlueprint"
+            ]
+        ),
 
         // MARK: MySQLBlueprint
         .target(

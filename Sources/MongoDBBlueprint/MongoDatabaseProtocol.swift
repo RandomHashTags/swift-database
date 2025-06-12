@@ -1,5 +1,5 @@
 
-import NoSQL
+import NoSQLBlueprint
 
 public protocol MongoDatabaseProtocol: NoSQLDatabaseProtocol {
 }
