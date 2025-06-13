@@ -14,6 +14,7 @@ import WinSDK
 
 import PostgreSQLBlueprint
 import SQLBlueprint
+import SwiftDatabaseBlueprint
 
 public struct PostgresConnection: PostgresConnectionProtocol {
     public var fileDescriptor:Int32
@@ -54,11 +55,35 @@ extension PostgresConnection {
         var startupMessage = PostgresStartupMessage(user: user, database: database)
         try startupMessage.write(to: self)
 
-        /*var authenticated = false
-        while !authenticated {
+        var authenticationStatus:AuthenticationStatus = .loading
+        while authenticationStatus == .loading {
             try readMessage { msg in
+                switch msg.type {
+                case PostgresMessage.BackendType.authentication.rawValue:
+                    msg.authentication { auth in
+                        switch auth {
+                        case .ok:
+                            authenticationStatus = .success
+                        default:
+                            fatalError("authentication not yet supported: \(auth)")
+                        }
+                    }
+                case PostgresMessage.BackendType.readyForQuery.rawValue:
+                    break
+                default:
+                    authenticationStatus = .failed
+                }
             }
-        }*/
+        }
+    }
+}
+
+// MARK: Authentication status
+extension PostgresConnection {
+    public enum AuthenticationStatus: UInt8 {
+        case loading
+        case success
+        case failed
     }
 }
 
@@ -67,15 +92,16 @@ extension PostgresConnection {
     @inlinable
     public func readMessage(_ closure: (PostgresMessage) throws -> Void) rethrows {
         var header = InlineArray<5, UInt8>(repeating: 0)
-        header.mutableSpan.withUnsafeBufferPointer { p in
-            guard read(fileDescriptor, .init(mutating: p.baseAddress!), 5) == 5 else {
-                fatalError("PostgresConnection;readMessage;read != 5")
+        var span = header.mutableSpan
+        span.withUnsafeMutableBufferPointer { p in
+            guard receive(baseAddress: p.baseAddress!, length: 5) == 5 else {
+                fatalError("PostgresConnection;readMessage;receive != 5")
             }
         }
         let type = header[0]
         let length = Int(header.span.withUnsafeBytes { $0[1..<5].load(as: UInt32.self) }) - 4
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length, { buffer in
-            _ = read(fileDescriptor, buffer.baseAddress, length)
+            _ = receive(baseAddress: buffer.baseAddress!, length: length)
             try closure(PostgresMessage(type: type, body: buffer))
         })
     }
