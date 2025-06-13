@@ -1,5 +1,5 @@
 
-extension PostgresMessage {
+extension PostgresRawMessage {
     public enum BackendType: UInt8, Sendable {
         case authentication           = 82  // R
         case backendKeyData           = 75  // K

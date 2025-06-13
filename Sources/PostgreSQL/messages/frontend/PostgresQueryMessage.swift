@@ -3,7 +3,8 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresMessage {
+extension PostgresRawMessage {
+    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-QUERY
     public struct Query: PostgresQueryMessageProtocol {
         public var query:String
 
@@ -14,7 +15,7 @@ extension PostgresMessage {
 }
 
 // MARK: Payload
-extension PostgresMessage.Query {
+extension PostgresRawMessage.Query {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try query.withUTF8 { queryBuffer in
@@ -23,12 +24,7 @@ extension PostgresMessage.Query {
                 buffer[0] = .Q
 
                 var i = 1
-                withUnsafeBytes(of: (4 + queryBuffer.count).bigEndian, {
-                    $0.forEach {
-                        buffer[i] = $0
-                        i += 1
-                    }
-                })
+                buffer.writeIntBigEndian(Int32(capacity), to: &i)
                 buffer.copyBuffer(queryBuffer, to: &i)
                 buffer[i] = 0
                 try closure(buffer)
@@ -38,11 +34,19 @@ extension PostgresMessage.Query {
 }
 
 // MARK: Write
-extension PostgresMessage.Query {
+extension PostgresRawMessage.Query {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
             try connection.writeBuffer($0.baseAddress!, length: $0.count)
         }
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func query(_ query: String) -> Query {
+        return Query(query)
     }
 }

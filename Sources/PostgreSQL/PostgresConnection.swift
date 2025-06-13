@@ -33,7 +33,9 @@ extension PostgresConnection {
         user: String,
         database: String
     ) async throws {
-        guard !isConnected else { fatalError("already established") }
+        guard !isConnected else {
+            throw PostgresError.connectionAlreadyEstablished()
+        }
         fileDescriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
         guard fileDescriptor >= 0 else { fatalError("socket error") }
 
@@ -55,23 +57,31 @@ extension PostgresConnection {
         var startupMessage = PostgresStartupMessage(user: user, database: database)
         try startupMessage.write(to: self)
 
-        var authenticationStatus:AuthenticationStatus = .loading
+        try authenticate()
+    }
+}
+
+// MARK: Authenticate
+extension PostgresConnection {
+    @inlinable
+    func authenticate() throws {
+        var authenticationStatus = AuthenticationStatus.loading
         while authenticationStatus == .loading {
             try readMessage { msg in
                 switch msg.type {
-                case PostgresMessage.BackendType.authentication.rawValue:
-                    msg.authentication { auth in
+                case PostgresRawMessage.BackendType.authentication.rawValue:
+                    try msg.authentication { auth in
                         switch auth {
                         case .ok:
                             authenticationStatus = .success
                         default:
-                            fatalError("authentication not yet supported: \(auth)")
+                            throw PostgresError.authentication("not yet supported: \(auth)")
                         }
                     }
-                case PostgresMessage.BackendType.readyForQuery.rawValue:
+                case PostgresRawMessage.BackendType.readyForQuery.rawValue:
                     break
                 default:
-                    authenticationStatus = .failed
+                    throw PostgresError.authentication("unhandled message type: \(msg.type)")
                 }
             }
         }
@@ -90,19 +100,19 @@ extension PostgresConnection {
 // MARK: Read message
 extension PostgresConnection {
     @inlinable
-    public func readMessage(_ closure: (PostgresMessage) throws -> Void) rethrows {
+    public func readMessage(_ closure: (PostgresRawMessage) throws -> Void) throws {
         var header = InlineArray<5, UInt8>(repeating: 0)
         var span = header.mutableSpan
-        span.withUnsafeMutableBufferPointer { p in
+        try span.withUnsafeMutableBufferPointer { p in
             guard receive(baseAddress: p.baseAddress!, length: 5) == 5 else {
-                fatalError("PostgresConnection;readMessage;receive != 5")
+                throw PostgresError.readMessage("receive != 5")
             }
         }
         let type = header[0]
         let length = Int(header.span.withUnsafeBytes { $0[1..<5].load(as: UInt32.self) }) - 4
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length, { buffer in
             _ = receive(baseAddress: buffer.baseAddress!, length: length)
-            try closure(PostgresMessage(type: type, body: buffer))
+            try closure(PostgresRawMessage(type: type, body: buffer))
         })
     }
 }

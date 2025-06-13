@@ -92,3 +92,16 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
         return UnsafeRawPointer(baseAddress! + offset).load(as: T.self)
     }
 }
+
+// MARK: Write int
+extension UnsafeMutableBufferPointer where Element == UInt8 {
+    @inlinable
+    public func writeIntBigEndian<T: FixedWidthInteger>(_ value: T, to index: inout Int) {
+        withUnsafeBytes(of: value.bigEndian, {
+            $0.forEach {
+                self[index] = $0
+                index += 1
+            }
+        })
+    }
+}

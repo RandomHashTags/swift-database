@@ -2,7 +2,7 @@
 import SQLBlueprint
 import PostgreSQLBlueprint
 
-extension PostgresMessage {
+extension PostgresRawMessage {
     public enum Authentication: PostgresAuthenticationMessageProtocol, @unchecked Sendable {
 
         case ok
@@ -16,7 +16,11 @@ extension PostgresMessage {
         case saslContinue(data: UnsafeMutableBufferPointer<UInt8>)
         case saslFinal(data: UnsafeMutableBufferPointer<UInt8>)
 
-        public static func parse(message: PostgresMessage, _ closure: (Authentication) throws -> Void, onFail: () -> Void = {}) rethrows {
+        public static func parse(
+            message: PostgresRawMessage,
+            _ closure: (Authentication) throws -> Void,
+            onFail: () -> Void = {}
+        ) rethrows {
             guard message.type == .R else {
                 onFail()
                 return
@@ -85,15 +89,11 @@ extension PostgresMessage {
                 }
             }
         }
-
-        @inlinable
-        public func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-            // TODO: remove?
-        }
     }
 }
 
-extension PostgresMessage {
+// MARK: Convenience
+extension PostgresRawMessage {
     @inlinable
     public func authentication(_ closure: (Authentication) throws -> Void, onFail: () -> Void = {}) rethrows {
         try Authentication.parse(message: self, closure, onFail: onFail)

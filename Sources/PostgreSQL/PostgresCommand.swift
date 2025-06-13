@@ -12,6 +12,7 @@ public struct PostgresCommand: PostgresCommandProtocol {
         sqlValue = value
     }
 }
+
 extension PostgresCommand {
     @inlinable
     public static func unsafeRaw(_ sql: String) -> PostgresCommand {

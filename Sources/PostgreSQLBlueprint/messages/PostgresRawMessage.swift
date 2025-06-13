@@ -1,7 +1,7 @@
 
 import SwiftDatabaseBlueprint
 
-public struct PostgresMessage: @unchecked Sendable {
+public struct PostgresRawMessage: @unchecked Sendable {
     public let type:UInt8
     public let body:UnsafeMutableBufferPointer<UInt8>
 
@@ -12,9 +12,9 @@ public struct PostgresMessage: @unchecked Sendable {
 }
 
 // MARK: Parse
-extension PostgresMessage {
+extension PostgresRawMessage {
     // https://www.postgresql.org/docs/current/protocol-message-formats.html
-    public static func parseFrontend(_ msg: PostgresMessage) -> Int? {
+    public static func parseFrontend(_ msg: PostgresRawMessage) -> Int? {
         switch msg.type {
         case .C: // command complete
             return nil
