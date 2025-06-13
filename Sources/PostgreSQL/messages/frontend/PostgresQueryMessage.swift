@@ -19,12 +19,10 @@ extension PostgresRawMessage.Query {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try query.withUTF8 { queryBuffer in
-            let capacity = 1 + 4 + queryBuffer.count + 1
+            let capacity = 5 + queryBuffer.count + 1
             try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                buffer[0] = .Q
-
-                var i = 1
-                buffer.writeIntBigEndian(Int32(capacity), to: &i)
+                var i = 0
+                buffer.writePostgresMessageHeader(type: .Q, capacity: capacity, to: &i)
                 buffer.copyBuffer(queryBuffer, to: &i)
                 buffer[i] = 0
                 try closure(buffer)

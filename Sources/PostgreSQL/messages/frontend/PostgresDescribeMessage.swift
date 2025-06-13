@@ -4,19 +4,19 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-CLOSE
-    public struct Close: PostgresCloseMessageProtocol {
-        public var type:CloseType
+    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DESCRIBE
+    public struct Describe: PostgresDescribeMessageProtocol {
+        public var type:DescribeType
 
-        public init(type: CloseType) {
+        public init(type: DescribeType) {
             self.type = type
         }
     }
 }
 
-// MARK: CloseType
-extension PostgresRawMessage.Close {
-    public enum CloseType: Sendable {
+// MARK: DescribeType
+extension PostgresRawMessage.Describe {
+    public enum DescribeType: Sendable {
         case preparedStatement(name: String)
         case portal(name: String)
 
@@ -31,16 +31,16 @@ extension PostgresRawMessage.Close {
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Close {
+extension PostgresRawMessage.Describe {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         switch type {
-        case .preparedStatement(var name), .portal(name: var name):
+        case .preparedStatement(var name), .portal(var name):
             try name.withUTF8 { nameBuffer in
-                let capacity = 6 + nameBuffer.count + 1
+                let capacity = 7 + nameBuffer.count
                 try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
                     var i = 0
-                    buffer.writePostgresMessageHeader(type: .C, capacity: capacity, to: &i)
+                    buffer.writePostgresMessageHeader(type: .D, capacity: capacity, to: &i)
                     buffer[i] = type.byte
                     i += 1
                     buffer.copyBuffer(nameBuffer, to: &i)
@@ -53,7 +53,7 @@ extension PostgresRawMessage.Close {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Close {
+extension PostgresRawMessage.Describe {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {

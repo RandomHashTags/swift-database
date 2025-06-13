@@ -54,7 +54,10 @@ extension PostgresConnection {
         }
         guard connectResult == 0 else { fatalError("connect error") }
 
-        var startupMessage = PostgresStartupMessage(user: user, database: database)
+        var startupMessage = PostgresRawMessage.StartupMessage(parameters: [
+            "user": user,
+            "database" : database
+        ])
         try startupMessage.write(to: self)
 
         try authenticate()
