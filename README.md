@@ -1,13 +1,31 @@
 # Swift Database
-Swift Database is a standalone database library that enables communication to your favorite databases, using the bare minimum dependencies. We do not lock this library behind using proprietary server implementations.
 
-It utilizes the latest features of the Swift Language like concurrency, Actors, Macros, and memory ownership to push performance to the absolute limits. We will be adopting more Swift features, like `~Copyable`, `~Escapable`, and borrowing array elements upon iteration when they are feature-complete (and upcoming Swift Package Manager features).
+<a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.2+-F05138?style=&logo=swift" alt="Requires at least Swift 6.2"></a> <img src="https://img.shields.io/badge/Platforms-Any-gold"> <a href="https://discord.com/invite/VyuFQUpcUz"><img src="https://img.shields.io/badge/Chat-Discord-7289DA?style=&logo=discord"></a> <a href="https://github.com/RandomHashTags/swift-database/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="Apache 2.0 License"></a>
 
-## Expected features
-- support for the most popular databases ranked by market share (plus others that we find appealing)
-- support for memory-only databases (especially useful for testing)
-- usage of Swift Macros for migration & type-safe SQL/NoSQL commands, and anywhere else that benefits from compile-time performance
-- usage of Swift Memory Ownership features for better performance
+Swift Database is a standalone database library that enables communication to your favorite databases (ranked by market share) using the bare minimum dependencies.
+
+We utilize the latest features of the Swift Language (actors, concurrency, inline arrays, macros, noncopyables, spans) to push performance to the absolute limits while still making it easy to use.
+
+We provide blueprint modules that lay out the API of the inner workings of each database to perform optimally, empowering the developer to determine the data structures and types used (if you don't use the default implementations provided by us).
+
+## Roadmap
+
+### WIP
+
+- [ ] Connection pool
+- [ ] Memory-only database
+- [ ] PostgreSQL
+
+### TODO
+
+- [ ] Prepared Statements
+- [ ] Macros for migration
+- [ ] Macros for type-safe SQL/NoSQL commands
+- [ ] MicrosoftSQL
+- [ ] MongoSQL
+- [ ] NoSQL
+- [ ] Oracle SQL
 
 ## Contributing
+
 Create a PR.
