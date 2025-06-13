@@ -24,16 +24,11 @@ public struct PostgresConnection: PostgresConnectionProtocol {
     }
 }
 
-// MARK: Establish
+// MARK: Connect
 extension PostgresConnection {
     @inlinable
-    public mutating func establish(
-        address: String,
-        port: UInt16,
-        user: String,
-        database: String
-    ) async throws {
-        guard !isConnected else {
+    public mutating func establishConnection(address: String, port: UInt16) throws {
+        guard fileDescriptor >= 0 else {
             throw PostgresError.connectionAlreadyEstablished()
         }
         fileDescriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
@@ -53,7 +48,18 @@ extension PostgresConnection {
             }
         }
         guard connectResult == 0 else { fatalError("connect error") }
+    }
+}
 
+// MARK: Establish
+extension PostgresConnection {
+    @inlinable
+    public mutating func establish(
+        address: String,
+        port: UInt16,
+        user: String,
+        database: String
+    ) async throws {
         var startupMessage = PostgresRawMessage.StartupMessage(parameters: [
             "user": user,
             "database" : database
@@ -117,5 +123,30 @@ extension PostgresConnection {
             _ = receive(baseAddress: buffer.baseAddress!, length: length)
             try closure(PostgresRawMessage(type: type, body: buffer))
         })
+    }
+}
+
+// MARK: Shutdown connection
+extension PostgresConnection {
+    @inlinable
+    public func shutdownConnection() {
+        closeFileDescriptor()
+    }
+}
+
+// MARK: Query
+extension PostgresConnection {
+    public func query(_ query: String) async throws -> RawMessage { // TODO: return a concrete query response
+        var payload = RawMessage.query(query)
+        try payload.write(to: self)
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                try readMessage { msg in
+                    continuation.resume(returning: msg)
+                }
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
     }
 }

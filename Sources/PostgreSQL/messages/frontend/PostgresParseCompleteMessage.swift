@@ -33,3 +33,11 @@ extension PostgresRawMessage.ParseComplete {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func parseComplete() -> ParseComplete {
+        return ParseComplete()
+    }
+}

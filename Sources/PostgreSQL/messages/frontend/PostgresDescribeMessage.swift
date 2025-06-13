@@ -61,3 +61,11 @@ extension PostgresRawMessage.Describe {
         }
     }
 }
+
+// MARK: Describe
+extension PostgresRawMessage {
+    @inlinable
+    public static func describe(type: Describe.DescribeType) -> Describe {
+        return Describe(type: type)
+    }
+}

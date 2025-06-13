@@ -47,3 +47,11 @@ extension PostgresRawMessage.Execute {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func execute(name: String, maximumReturnedRows: Int32) -> Execute {
+        return Execute(name: name, maximumReturnedRows: maximumReturnedRows)
+    }
+}

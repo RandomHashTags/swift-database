@@ -33,3 +33,11 @@ extension PostgresRawMessage.Sync {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func sync() -> Sync {
+        return Sync()
+    }
+}

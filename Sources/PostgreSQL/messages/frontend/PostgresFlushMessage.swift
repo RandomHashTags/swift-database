@@ -33,3 +33,11 @@ extension PostgresRawMessage.Flush {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func flush() -> Flush {
+        return Flush()
+    }
+}

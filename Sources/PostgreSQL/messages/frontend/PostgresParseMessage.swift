@@ -63,3 +63,16 @@ extension PostgresRawMessage.Parse {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func parse<let parameterDataTypeObjectIDsCount: Int>(
+        destinationName: String,
+        query: String,
+        parameterDataTypes: Int16,
+        parameterDataTypeObjectIDs: InlineArray<parameterDataTypeObjectIDsCount, Int32>
+    ) -> Parse<parameterDataTypeObjectIDsCount> {
+        return Parse(destinationName: destinationName, query: query, parameterDataTypes: parameterDataTypes, parameterDataTypeObjectIDs: parameterDataTypeObjectIDs)
+    }
+}

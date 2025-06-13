@@ -1,7 +1,8 @@
 
+import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-public struct PostgresRawMessage: @unchecked Sendable {
+public struct PostgresRawMessage: SQLRawMessageProtocol, @unchecked Sendable {
     public let type:UInt8
     public let body:UnsafeMutableBufferPointer<UInt8>
 

@@ -39,3 +39,11 @@ extension PostgresRawMessage.PasswordMessage {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func password(_ password: String) -> PasswordMessage {
+        return PasswordMessage(password: password)
+    }
+}

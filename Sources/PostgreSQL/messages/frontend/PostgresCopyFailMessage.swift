@@ -40,3 +40,11 @@ extension PostgresRawMessage.CopyFail {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func copyFail(reason: String) -> CopyFail {
+        return CopyFail(reason: reason)
+    }
+}

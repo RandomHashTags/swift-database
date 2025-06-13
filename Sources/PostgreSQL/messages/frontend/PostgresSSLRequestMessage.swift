@@ -33,3 +33,11 @@ extension PostgresRawMessage.SSLRequest {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func sslRequest() -> SSLRequest {
+        return SSLRequest()
+    }
+}

@@ -43,3 +43,11 @@ extension PostgresRawMessage.CancelRequest {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func cancelRequest(processID: Int32, secretKey: Int32) -> CancelRequest {
+        return CancelRequest(processID: processID, secretKey: secretKey)
+    }
+}

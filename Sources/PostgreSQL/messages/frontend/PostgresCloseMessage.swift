@@ -61,3 +61,11 @@ extension PostgresRawMessage.Close {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func close(type: Close.CloseType) -> Close {
+        return Close(type: type)
+    }
+}

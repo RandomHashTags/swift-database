@@ -33,3 +33,11 @@ extension PostgresRawMessage.Terminate {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func terminate() -> Terminate {
+        return Terminate()
+    }
+}

@@ -33,3 +33,11 @@ extension PostgresRawMessage.GSSENCRequest {
         }
     }
 }
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public static func gssencRequest() -> GSSENCRequest {
+        return GSSENCRequest()
+    }
+}

@@ -10,10 +10,22 @@ import WinSDK
 #endif
 
 public protocol SQLConnectionProtocol: Sendable, ~Copyable {
+    associatedtype RawMessage: SQLRawMessageProtocol
+
+    init()
+
     var fileDescriptor: Int32 { get }
 
     @inlinable
-    var isConnected: Bool { get }
+    mutating func establishConnection(
+        address: String,
+        port: UInt16
+    ) async throws
+
+    func query(_ query: String) async throws -> RawMessage
+
+    @inlinable
+    func shutdownConnection()
 
     @inlinable
     func closeFileDescriptor()
@@ -21,11 +33,6 @@ public protocol SQLConnectionProtocol: Sendable, ~Copyable {
     /// Writes a buffer to the socket.
     @inlinable
     func writeBuffer(_ pointer: UnsafeRawPointer, length: Int) throws
-}
-
-// MARK: Is connected
-extension SQLConnectionProtocol {
-    @inlinable public var isConnected: Bool { fileDescriptor >= 0 }
 }
 
 // MARK: Close file descriptor
