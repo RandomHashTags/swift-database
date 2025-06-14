@@ -21,10 +21,19 @@ extension PostgresConnectionProtocol {
                 throw PostgresError.readMessage("received (\(received)) != 5")
             }
             let type = headerBuffer[0]
-            let length:UInt32 = headerBuffer.loadUnalignedIntBigEndian(offset: 1) - 4
+            let length:Int32 = headerBuffer.loadUnalignedIntBigEndian(offset: 1)
             try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: Int(length), { buffer in
-                _ = receive(baseAddress: buffer.baseAddress!, length: Int(length))
-                logger.debug("Received message of type \(type) and length \(length)")
+                var i = 0
+                withUnsafeBytes(of: length, {
+                    $0.forEach {
+                        buffer[i] = $0
+                        i += 1
+                    }
+                })
+                _ = receive(baseAddress: buffer.baseAddress! + i, length: Int(length) - i)
+                #if DEBUG
+                logger.info("Received message of type \(type) with body of length \(length)")
+                #endif
                 try closure(PostgresRawMessage(type: type, body: buffer))
             })
         })
@@ -35,7 +44,9 @@ extension PostgresConnectionProtocol {
 extension PostgresConnectionProtocol {
     @inlinable
     public func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) throws {
-        logger.debug("Sending message: \(T.self)")
+        #if DEBUG
+        logger.info("Sending message: \(message)")
+        #endif
         try message.write(to: self)
     }
 }
