@@ -12,23 +12,36 @@ import Musl
 import WinSDK
 #endif
 
+import Logging
 import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 public struct PostgresConnection: PostgresConnectionProtocol {
     public var fileDescriptor:Int32
+    public var logger:Logger
 
     public init() {
         fileDescriptor = -1
+        logger = Logger(label: "database.swift.postgresDisconnectedFileDescriptor")
     }
 }
 
 // MARK: Connect
 extension PostgresConnection {
     @inlinable
-    public mutating func establishConnection(address: String, port: UInt16) throws {
-        guard fileDescriptor >= 0 else {
+    public mutating func establishConnection(storage: DatabaseStorageMethod) throws {
+        switch storage {
+        case .device(let address, let port):
+            try establishConnection(address: address, port: port)
+        case .memory: // TODO: support
+            break
+        }
+    }
+
+    @inlinable
+    mutating public func establishConnection(address: String, port: UInt16) throws {
+        guard fileDescriptor == -1 else {
             throw PostgresError.connectionAlreadyEstablished()
         }
         fileDescriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
@@ -48,6 +61,7 @@ extension PostgresConnection {
             }
         }
         guard connectResult == 0 else { fatalError("connect error") }
+        logger = Logger(label: "database.swift.postgresFileDescriptor\(fileDescriptor)")
     }
 }
 
@@ -60,12 +74,12 @@ extension PostgresConnection {
         user: String,
         database: String
     ) async throws {
+        try establishConnection(address: address, port: port)
         var startupMessage = PostgresRawMessage.StartupMessage(parameters: [
             "user": user,
             "database" : database
         ])
-        try startupMessage.write(to: self)
-
+        try sendMessage(&startupMessage)
         try authenticate()
     }
 }
@@ -89,6 +103,11 @@ extension PostgresConnection {
                     }
                 case PostgresRawMessage.BackendType.readyForQuery.rawValue:
                     break
+                case PostgresRawMessage.BackendType.errorResponse.rawValue:
+                    try PostgresRawMessage.ErrorResponse.parse(message: msg, {
+                        throw PostgresError.authentication("received errorResponse: \($0.value ?? "of type \($0.type)")")
+                    })
+                    
                 default:
                     throw PostgresError.authentication("unhandled message type: \(msg.type)")
                 }
@@ -106,26 +125,6 @@ extension PostgresConnection {
     }
 }
 
-// MARK: Read message
-extension PostgresConnection {
-    @inlinable
-    public func readMessage(_ closure: (PostgresRawMessage) throws -> Void) throws {
-        var header = InlineArray<5, UInt8>(repeating: 0)
-        var span = header.mutableSpan
-        try span.withUnsafeMutableBufferPointer { p in
-            guard receive(baseAddress: p.baseAddress!, length: 5) == 5 else {
-                throw PostgresError.readMessage("receive != 5")
-            }
-        }
-        let type = header[0]
-        let length = Int(header.span.withUnsafeBytes { $0[1..<5].load(as: UInt32.self) }) - 4
-        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length, { buffer in
-            _ = receive(baseAddress: buffer.baseAddress!, length: length)
-            try closure(PostgresRawMessage(type: type, body: buffer))
-        })
-    }
-}
-
 // MARK: Shutdown connection
 extension PostgresConnection {
     @inlinable
@@ -138,7 +137,7 @@ extension PostgresConnection {
 extension PostgresConnection {
     public func query(_ query: String) async throws -> RawMessage { // TODO: return a concrete query response
         var payload = RawMessage.query(query)
-        try payload.write(to: self)
+        try sendMessage(&payload)
         return try await withCheckedThrowingContinuation { continuation in
             do {
                 try readMessage { msg in

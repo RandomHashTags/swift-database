@@ -1,18 +1,17 @@
 
+import SwiftDatabaseBlueprint
+
 public actor SQLConnectionPool<T: SQLConnectionProtocol> { // TODO: make noncopyable?
-    let address:String
-    let port:UInt16
+    let storage:DatabaseStorageMethod
     var maxConnections:Int
     var available:[T]
     var waiting:[CheckedContinuation<T, Never>]
     
     public init(
-        address: String,
-        port: UInt16,
+        storage: DatabaseStorageMethod,
         maxConnections: Int
     ) {
-        self.address = address
-        self.port = port
+        self.storage = storage
         self.maxConnections = maxConnections
         available = []
         available.reserveCapacity(maxConnections)
@@ -24,14 +23,13 @@ public actor SQLConnectionPool<T: SQLConnectionProtocol> { // TODO: make noncopy
 extension SQLConnectionPool {
     public func establishConnections(_ onLoad: ([T]) -> Void = { _ in }) async {
         shutdown()
-        let address = address
-        let port = port
+        let storage = storage
         await withTaskGroup(of: T?.self) { group in
             for _ in 0..<maxConnections {
                 group.addTask {
                     var connection = T()
                     do {
-                        try await connection.establishConnection(address: address, port: port)
+                        try await connection.establishConnection(storage: storage)
                         return connection
                     } catch {
                         // TODO: log and handle
@@ -57,7 +55,7 @@ extension SQLConnectionPool {
         }
         if available.count < maxConnections {
             var connection = T()
-            try await connection.establishConnection(address: address, port: port)
+            try await connection.establishConnection(storage: storage)
             return connection
         }
         return await withCheckedContinuation { waiting.append($0) }

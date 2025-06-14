@@ -40,9 +40,9 @@ extension PostgresRawMessage.StartupMessage {
         parameters: [String:String],
         _ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void
     ) rethrows {
-        var capacity = 0
+        var capacity = 1
         for (key, value) in parameters {
-            capacity += key.count + value.count + 2
+            capacity += key.utf8.count + value.utf8.count + 2
         }
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
             var i = 0
@@ -58,6 +58,7 @@ extension PostgresRawMessage.StartupMessage {
                     i += 1
                 }
             }
+            buffer[i] = 0
             try closure(buffer)
         })
     }

@@ -83,13 +83,31 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
 // MARK: Load Int
 extension UnsafeMutableBufferPointer where Element == UInt8 {
     @inlinable
-    public func loadInt<T: BinaryInteger>() -> T {
+    public func loadUnalignedInt<T: BinaryInteger>() -> T {
         return UnsafeRawPointer(baseAddress!).load(as: T.self)
     }
 
     @inlinable
-    public func loadInt<T: BinaryInteger>(offset: Int) -> T {
-        return UnsafeRawPointer(baseAddress! + offset).load(as: T.self)
+    public func loadUnalignedInt<T: BinaryInteger>(offset: Int) -> T {
+        return UnsafeRawPointer(baseAddress! + offset).loadUnaligned(as: T.self)
+    }
+
+    @inlinable
+    public func loadUnalignedIntBigEndian<T: FixedWidthInteger>() -> T {
+        return UnsafeRawPointer(baseAddress!).loadUnaligned(as: T.self).bigEndian
+    }
+    
+    @inlinable
+    public func loadUnalignedIntBigEndian<T: FixedWidthInteger>(offset: Int) -> T {
+        return UnsafeRawPointer(baseAddress! + offset).loadUnaligned(as: T.self).bigEndian
+    }
+}
+
+// MARK: Load string
+extension UnsafeMutableBufferPointer where Element == UInt8 {
+    @inlinable
+    public func loadNullTerminatedString(offset: Int = 0) -> String {
+        return String(cString: baseAddress! + offset)
     }
 }
 

@@ -5,14 +5,27 @@ import SwiftDatabaseBlueprint
 
 extension PostgresRawMessage {
     /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYDONE
-    public struct PostgresCopyDone: PostgresCopyDoneMessageProtocol {
+    public struct CopyDone: PostgresCopyDoneMessageProtocol {
         public init() {
         }
     }
 }
 
+// MARK: Parse
+extension PostgresRawMessage.CopyDone {
+    public static func parse(
+        message: PostgresRawMessage,
+        _ closure: (consuming Self) throws -> Void
+    ) throws {
+        guard message.type == .c else {
+            throw PostgresError.copyDone("message type != .c")
+        }
+        try closure(.init())
+    }
+}
+
 // MARK: Payload
-extension PostgresRawMessage.PostgresCopyDone {
+extension PostgresRawMessage.CopyDone {
     @inlinable
     public func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 5, { buffer in
@@ -24,7 +37,7 @@ extension PostgresRawMessage.PostgresCopyDone {
 }
 
 // MARK: Write
-extension PostgresRawMessage.PostgresCopyDone {
+extension PostgresRawMessage.CopyDone {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {

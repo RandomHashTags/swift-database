@@ -9,18 +9,19 @@ import Glibc
 import WinSDK
 #endif
 
+import Logging
+import SwiftDatabaseBlueprint
+
 public protocol SQLConnectionProtocol: Sendable, ~Copyable {
     associatedtype RawMessage: SQLRawMessageProtocol
 
     init()
 
     var fileDescriptor: Int32 { get }
+    var logger: Logger { get }
 
     @inlinable
-    mutating func establishConnection(
-        address: String,
-        port: UInt16
-    ) async throws
+    mutating func establishConnection(storage: DatabaseStorageMethod) async throws
 
     func query(_ query: String) async throws -> RawMessage
 
@@ -66,7 +67,7 @@ extension SQLConnectionProtocol {
             if Task.isCancelled { return }
             let result = sendMultiplatform(buffer + sent, length - sent)
             if result <= 0 {
-                fatalError("socket send error")
+                throw SQLError.send(reason: "result (\(result)) <= 0")
             }
             sent += result
         }

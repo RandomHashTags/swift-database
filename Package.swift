@@ -116,7 +116,8 @@ let package = Package(
         .target(
             name: "SQLBlueprint",
             dependencies: [
-                "SwiftDatabaseBlueprint"
+                "SwiftDatabaseBlueprint",
+                .product(name: "Logging", package: "swift-log")
             ]
         ),
 
@@ -140,14 +141,18 @@ let package = Package(
         .target(
             name: "PostgreSQLBlueprint",
             dependencies: [
-                "SQLBlueprint"
+                "SQLBlueprint",
+                "SwiftDatabaseBlueprint",
+                .product(name: "Logging", package: "swift-log")
             ]
         ),
         // MARK: PostgreSQL
         .target(
             name: "PostgreSQL",
             dependencies: [
-                "PostgreSQLBlueprint"
+                "PostgreSQLBlueprint",
+                "SwiftDatabaseBlueprint",
+                .product(name: "Logging", package: "swift-log")
             ]
         ),
 
@@ -169,7 +174,9 @@ let package = Package(
                 "OracleBlueprint",
                 "MicrosoftSQLBlueprint",
                 "PostgreSQLBlueprint",
-                "MySQLBlueprint"
+                "MySQLBlueprint",
+
+                "PostgreSQL",
             ]
         ),
     ]
