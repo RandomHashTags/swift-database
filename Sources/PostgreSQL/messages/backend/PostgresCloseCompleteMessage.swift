@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
@@ -19,5 +20,16 @@ extension PostgresRawMessage.CloseComplete {
             throw PostgresError.closeComplete("message type != .`3`")
         }
         try closure(.init())
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func closeComplete(logger: Logger, _ closure: (consuming CloseComplete) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as CloseComplete")
+        #endif
+        try CloseComplete.parse(message: self, closure)
     }
 }

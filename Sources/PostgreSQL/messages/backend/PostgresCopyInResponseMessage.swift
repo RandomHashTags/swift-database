@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
@@ -35,5 +36,16 @@ extension PostgresRawMessage.CopyInResponse {
             }
         }
         try closure(.init(format: format, columns: columns))
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func copyInResponse(logger: Logger, _ closure: (consuming CopyInResponse) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as CopyInResponse")
+        #endif
+        try CopyInResponse.parse(message: self, closure)
     }
 }

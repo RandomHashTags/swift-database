@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
@@ -43,5 +44,16 @@ extension PostgresRawMessage.CopyDone {
         try payload {
             try connection.writeBuffer($0.baseAddress!, length: $0.count)
         }
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func copyDone(logger: Logger, _ closure: (consuming CopyDone) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as CopyDone")
+        #endif
+        try CopyDone.parse(message: self, closure)
     }
 }

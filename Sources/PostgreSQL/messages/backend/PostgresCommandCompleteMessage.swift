@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
@@ -22,5 +23,16 @@ extension PostgresRawMessage.CommandComplete {
             throw PostgresError.commandComplete("message type != .C")
         }
         try closure(.init(commandTag: message.body.loadNullTerminatedString()))
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func commandComplete(logger: Logger, _ closure: (consuming CommandComplete) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as CommandComplete")
+        #endif
+        try CommandComplete.parse(message: self, closure)
     }
 }

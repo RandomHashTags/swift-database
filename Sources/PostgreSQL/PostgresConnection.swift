@@ -93,7 +93,7 @@ extension PostgresConnection {
             try readMessage { msg in
                 switch msg.type {
                 case PostgresRawMessage.BackendType.authentication.rawValue:
-                    try msg.authentication { auth in
+                    try msg.authentication(logger: logger) { auth in
                         switch auth {
                         case .ok:
                             authenticationStatus = .success
@@ -104,10 +104,9 @@ extension PostgresConnection {
                 case PostgresRawMessage.BackendType.readyForQuery.rawValue:
                     break
                 case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                    try PostgresRawMessage.ErrorResponse.parse(message: msg, {
+                    try msg.errorResponse(logger: logger) {
                         throw PostgresError.authentication("received errorResponse: \($0.value ?? "of type \($0.type)")")
-                    })
-                    
+                    }
                 default:
                     throw PostgresError.authentication("unhandled message type: \(msg.type)")
                 }

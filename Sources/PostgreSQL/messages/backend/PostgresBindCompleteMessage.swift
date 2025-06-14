@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
@@ -19,5 +20,16 @@ extension PostgresRawMessage.BindComplete {
             throw PostgresError.bindComplete("message type != .`2`")
         }
         try closure(.init())
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func bindComplete(logger: Logger, _ closure: (consuming BindComplete) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as BindComplete")
+        #endif
+        try BindComplete.parse(message: self, closure)
     }
 }

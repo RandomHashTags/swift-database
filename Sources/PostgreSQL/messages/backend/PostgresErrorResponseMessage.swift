@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
@@ -31,5 +32,16 @@ extension PostgresRawMessage.ErrorResponse {
             value = message.body.loadNullTerminatedString(offset: 5)
         }
         try closure(.init(type: type, value: value))
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func errorResponse(logger: Logger, _ closure: (consuming ErrorResponse) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as ErrorResponse")
+        #endif
+        try ErrorResponse.parse(message: self, closure)
     }
 }

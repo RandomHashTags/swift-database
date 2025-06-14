@@ -1,4 +1,5 @@
 
+import Logging
 import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
@@ -26,5 +27,16 @@ extension PostgresRawMessage.BackendKeyData {
         let processID:Int32 = message.body.loadUnalignedIntBigEndian(offset: 4)
         let secretKey:Int32 = message.body.loadUnalignedIntBigEndian(offset: 8)
         try closure(.init(processID: processID, secretKey: secretKey))
+    }
+}
+
+// MARK: Convenience
+extension PostgresRawMessage {
+    @inlinable
+    public func backendKeyData(logger: Logger, _ closure: (consuming BackendKeyData) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as BackendKeyData")
+        #endif
+        try BackendKeyData.parse(message: self, closure)
     }
 }

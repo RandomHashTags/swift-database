@@ -1,6 +1,7 @@
 
-import SQLBlueprint
+import Logging
 import PostgreSQLBlueprint
+import SQLBlueprint
 
 extension PostgresRawMessage {
     public enum Authentication: PostgresAuthenticationMessageProtocol, @unchecked Sendable {
@@ -83,7 +84,10 @@ extension PostgresRawMessage.Authentication {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func authentication(_ closure: (consuming Authentication) throws -> Void) throws {
+    public func authentication(logger: Logger, _ closure: (consuming Authentication) throws -> Void) throws {
+        #if DEBUG
+        logger.info("Parsing PostgresRawMessage as Authentication")
+        #endif
         try Authentication.parse(message: self, closure)
     }
 }
