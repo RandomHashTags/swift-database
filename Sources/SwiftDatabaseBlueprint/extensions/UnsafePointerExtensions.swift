@@ -107,6 +107,7 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
 extension UnsafeMutableBufferPointer where Element == UInt8 {
     @inlinable
     public func loadNullTerminatedString(offset: Int = 0) -> String {
+        // TODO: support bigEndian?
         return String(cString: baseAddress! + offset)
     }
 }

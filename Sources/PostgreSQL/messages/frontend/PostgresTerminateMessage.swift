@@ -5,7 +5,7 @@ import SwiftDatabaseBlueprint
 
 extension PostgresRawMessage {
     /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-TERMINATE
-    public struct Terminate: PostgresSyncMessageProtocol {
+    public struct Terminate: PostgresTerminateMessageProtocol {
         public init() {
         }
     }

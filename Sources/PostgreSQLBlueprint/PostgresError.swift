@@ -49,6 +49,11 @@ extension PostgresError {
     @inlinable public static func commandComplete(_ reason: String = "") -> PostgresError { PostgresError(identifier: "commandCompleteError", reason: reason) }
 }
 
+// MARK: Copy data
+extension PostgresError {
+    @inlinable public static func copyData(_ reason: String = "") -> PostgresError { PostgresError(identifier: "copyDataError", reason: reason) }
+}
+
 // MARK: Copy done
 extension PostgresError {
     @inlinable public static func copyDone(_ reason: String = "") -> PostgresError { PostgresError(identifier: "copyDoneError", reason: reason) }
@@ -57,6 +62,21 @@ extension PostgresError {
 // MARK: Copy in response
 extension PostgresError {
     @inlinable public static func copyInResponse(_ reason: String = "") -> PostgresError { PostgresError(identifier: "copyInResponseError", reason: reason) }
+}
+
+// MARK: Copy out response
+extension PostgresError {
+    @inlinable public static func copyOutResponse(_ reason: String = "") -> PostgresError { PostgresError(identifier: "copyOutResponseError", reason: reason) }
+}
+
+// MARK: Copy both response
+extension PostgresError {
+    @inlinable public static func copyBothResponse(_ reason: String = "") -> PostgresError { PostgresError(identifier: "copyBothResponseError", reason: reason) }
+}
+
+// MARK: Data row
+extension PostgresError {
+    @inlinable public static func dataRow(_ reason: String = "") -> PostgresError { PostgresError(identifier: "dataRowError", reason: reason) }
 }
 
 // MARK: Error response

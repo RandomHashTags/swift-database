@@ -7,11 +7,20 @@ extension PostgresRawMessage {
     /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-FUNCTIONCALL
     public struct FunctionCall: PostgresFunctionCallMessageProtocol {
         public var objectID:Int32
+        public var argumentFormatCodes:[Int16]
+        public var arguments:[String?] // TODO: support binary format
+        public var formatCode:Int16
 
         public init(
-            objectID: Int32
+            objectID: Int32,
+            argumentFormatCodes: [Int16],
+            arguments: [String?],
+            formatCode: Int16
         ) { // TODO: finish
             self.objectID = objectID
+            self.argumentFormatCodes = argumentFormatCodes
+            self.arguments = arguments
+            self.formatCode = formatCode
         }
     }
 }

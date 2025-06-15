@@ -3,6 +3,7 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
+/*
 extension PostgresRawMessage {
     /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PARSECOMPLETE
     public struct ParseComplete: PostgresParseCompleteMessageProtocol {
@@ -40,4 +41,4 @@ extension PostgresRawMessage {
     public static func parseComplete() -> ParseComplete {
         return ParseComplete()
     }
-}
+}*/

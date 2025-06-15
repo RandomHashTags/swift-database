@@ -4,7 +4,7 @@ import PostgreSQLBlueprint
 
 extension PostgresRawMessage {
     /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
-    public struct ErrorResponse: PostgresBackendKeyDataMessageProtocol {
+    public struct ErrorResponse: PostgresErrorResponseMessageProtocol {
         public var type:UInt8
         public var value:String?
 

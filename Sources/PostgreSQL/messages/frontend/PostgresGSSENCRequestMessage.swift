@@ -5,7 +5,7 @@ import SwiftDatabaseBlueprint
 
 extension PostgresRawMessage {
     /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSENCREQUEST
-    public struct GSSENCRequest: PostgresCopyFailMessageProtocol {
+    public struct GSSENCRequest: PostgresGSSENCRequestMessageProtocol {
         public init() {
         }
     }
