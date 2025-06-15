@@ -3,24 +3,22 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-CANCELREQUEST
-    public struct CancelRequest: PostgresCancelRequestMessageProtocol {
-        public var processID:Int32
-        public var secretKey:Int32
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-CANCELREQUEST
+public struct PostgresCancelRequestMessage: PostgresCancelRequestMessageProtocol {
+    public var processID:Int32
+    public var secretKey:Int32
 
-        public init(
-            processID: Int32,
-            secretKey: Int32
-        ) {
-            self.processID = processID
-            self.secretKey = secretKey
-        }
+    public init(
+        processID: Int32,
+        secretKey: Int32
+    ) {
+        self.processID = processID
+        self.secretKey = secretKey
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.CancelRequest {
+extension PostgresCancelRequestMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 16, { buffer in
@@ -35,7 +33,7 @@ extension PostgresRawMessage.CancelRequest {
 }
 
 // MARK: Write
-extension PostgresRawMessage.CancelRequest {
+extension PostgresCancelRequestMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -47,7 +45,7 @@ extension PostgresRawMessage.CancelRequest {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func cancelRequest(processID: Int32, secretKey: Int32) -> CancelRequest {
-        return CancelRequest(processID: processID, secretKey: secretKey)
+    public static func cancelRequest(processID: Int32, secretKey: Int32) -> PostgresCancelRequestMessage {
+        return PostgresCancelRequestMessage(processID: processID, secretKey: secretKey)
     }
 }

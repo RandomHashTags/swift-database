@@ -4,16 +4,14 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 /*
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PARSECOMPLETE
-    public struct ParseComplete: PostgresParseCompleteMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PARSECOMPLETE
+public struct PostgresParseCompleteMessage: PostgresParseCompleteMessageProtocol {
+    public init() {
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.ParseComplete {
+extension PostgresParseCompleteMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         let capacity = 5
@@ -26,7 +24,7 @@ extension PostgresRawMessage.ParseComplete {
 }
 
 // MARK: Write
-extension PostgresRawMessage.ParseComplete {
+extension PostgresParseCompleteMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -38,7 +36,7 @@ extension PostgresRawMessage.ParseComplete {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func parseComplete() -> ParseComplete {
-        return ParseComplete()
+    public static func parseComplete() -> PostgresParseCompleteMessage {
+        return PostgresParseCompleteMessage()
     }
 }*/

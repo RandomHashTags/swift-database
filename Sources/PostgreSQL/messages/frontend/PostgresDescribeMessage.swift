@@ -3,19 +3,17 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DESCRIBE
-    public struct Describe: PostgresDescribeMessageProtocol {
-        public var type:DescribeType
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DESCRIBE
+public struct PostgresDescribeMessage: PostgresDescribeMessageProtocol {
+    public var type:DescribeType
 
-        public init(type: DescribeType) {
-            self.type = type
-        }
+    public init(type: DescribeType) {
+        self.type = type
     }
 }
 
 // MARK: DescribeType
-extension PostgresRawMessage.Describe {
+extension PostgresDescribeMessage {
     public enum DescribeType: Sendable {
         case preparedStatement(name: String)
         case portal(name: String)
@@ -31,7 +29,7 @@ extension PostgresRawMessage.Describe {
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Describe {
+extension PostgresDescribeMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         switch type {
@@ -53,7 +51,7 @@ extension PostgresRawMessage.Describe {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Describe {
+extension PostgresDescribeMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -65,7 +63,7 @@ extension PostgresRawMessage.Describe {
 // MARK: Describe
 extension PostgresRawMessage {
     @inlinable
-    public static func describe(type: Describe.DescribeType) -> Describe {
-        return Describe(type: type)
+    public static func describe(type: PostgresDescribeMessage.DescribeType) -> PostgresDescribeMessage {
+        return PostgresDescribeMessage(type: type)
     }
 }

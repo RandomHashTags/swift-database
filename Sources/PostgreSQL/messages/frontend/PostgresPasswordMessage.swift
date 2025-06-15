@@ -3,19 +3,17 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PASSWORDMESSAGE
-    public struct PasswordMessage: PostgresPasswordMessageProtocol {
-        public var password:String
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PASSWORDMESSAGE
+public struct PostgresPasswordMessage: PostgresPasswordMessageProtocol {
+    public var password:String
 
-        public init(password: String) {
-            self.password = password
-        }
+    public init(password: String) {
+        self.password = password
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.PasswordMessage {
+extension PostgresPasswordMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try password.withUTF8 { passwordBuffer in
@@ -31,7 +29,7 @@ extension PostgresRawMessage.PasswordMessage {
 }
 
 // MARK: Write
-extension PostgresRawMessage.PasswordMessage {
+extension PostgresPasswordMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -43,7 +41,7 @@ extension PostgresRawMessage.PasswordMessage {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func password(_ password: String) -> PasswordMessage {
-        return PasswordMessage(password: password)
+    public static func password(_ password: String) -> PostgresPasswordMessage {
+        return PostgresPasswordMessage(password: password)
     }
 }

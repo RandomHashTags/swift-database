@@ -3,24 +3,22 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-STARTUPMESSAGE
-    public struct StartupMessage: PostgresStartupMessageProtocol {
-        public var protocolVersion:Int32
-        public var parameters:[String:String]
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-STARTUPMESSAGE
+public struct PostgresStartupMessage: PostgresStartupMessageProtocol {
+    public var protocolVersion:Int32
+    public var parameters:[String:String]
 
-        public init(
-            protocolVersion: Int32 = 196608, // protocol version 3.0 (0x00030000 = 196608)
-            parameters: [String:String]
-        ) {
-            self.protocolVersion = protocolVersion
-            self.parameters = parameters
-        }
+    public init(
+        protocolVersion: Int32 = 196608, // protocol version 3.0 (0x00030000 = 196608)
+        parameters: [String:String]
+    ) {
+        self.protocolVersion = protocolVersion
+        self.parameters = parameters
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.StartupMessage {
+extension PostgresStartupMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try Self.createBody(parameters: parameters) { bodyBuffer in
@@ -65,7 +63,7 @@ extension PostgresRawMessage.StartupMessage {
 }
 
 // MARK: Write
-extension PostgresRawMessage.StartupMessage {
+extension PostgresStartupMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {

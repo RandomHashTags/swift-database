@@ -4,16 +4,14 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYDONE
-    public struct CopyDone: PostgresCopyDoneMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYDONE
+public struct PostgresCopyDoneMessage: PostgresCopyDoneMessageProtocol {
+    public init() {
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.CopyDone {
+extension PostgresCopyDoneMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -26,7 +24,7 @@ extension PostgresRawMessage.CopyDone {
 }
 
 // MARK: Payload
-extension PostgresRawMessage.CopyDone {
+extension PostgresCopyDoneMessage {
     @inlinable
     public func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 5, { buffer in
@@ -38,7 +36,7 @@ extension PostgresRawMessage.CopyDone {
 }
 
 // MARK: Write
-extension PostgresRawMessage.CopyDone {
+extension PostgresCopyDoneMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -50,10 +48,10 @@ extension PostgresRawMessage.CopyDone {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func copyDone(logger: Logger, _ closure: (consuming CopyDone) throws -> Void) throws {
+    public func copyDone(logger: Logger, _ closure: (consuming PostgresCopyDoneMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as CopyDone")
+        logger.info("Parsing PostgresRawMessage as PostgresCopyDoneMessage")
         #endif
-        try CopyDone.parse(message: self, closure)
+        try PostgresCopyDoneMessage.parse(message: self, closure)
     }
 }

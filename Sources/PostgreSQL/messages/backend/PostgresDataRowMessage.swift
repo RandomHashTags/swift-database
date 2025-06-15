@@ -2,19 +2,17 @@
 import Logging
 import PostgreSQLBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
-    public struct DataRow: PostgresErrorResponseMessageProtocol {
-        public var columns:[String?] // TODO: support binary format
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
+public struct PostgresDataRowMessage: PostgresErrorResponseMessageProtocol {
+    public var columns:[String?] // TODO: support binary format
 
-        public init(columns: [String?]) {
-            self.columns = columns
-        }
+    public init(columns: [String?]) {
+        self.columns = columns
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.DataRow {
+extension PostgresDataRowMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -47,10 +45,10 @@ extension PostgresRawMessage.DataRow {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func dataRow(logger: Logger, _ closure: (consuming DataRow) throws -> Void) throws {
+    public func dataRow(logger: Logger, _ closure: (consuming PostgresDataRowMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as DataRow")
+        logger.info("Parsing PostgresRawMessage as PostgresDataRowMessage")
         #endif
-        try DataRow.parse(message: self, closure)
+        try PostgresDataRowMessage.parse(message: self, closure)
     }
 }

@@ -2,21 +2,19 @@
 import Logging
 import PostgreSQLBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYOUTRESPONSE
-    public struct CopyOutResponse: PostgresCopyOutResponseMessageProtocol {
-        public var format:Int8
-        public var columnFormatCodes:[Int16]
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYOUTRESPONSE
+public struct PostgresCopyOutResponseMessage: PostgresCopyOutResponseMessageProtocol {
+    public var format:Int8
+    public var columnFormatCodes:[Int16]
 
-        public init(format: Int8, columnFormatCodes: [Int16]) {
-            self.format = format
-            self.columnFormatCodes = columnFormatCodes
-        }
+    public init(format: Int8, columnFormatCodes: [Int16]) {
+        self.format = format
+        self.columnFormatCodes = columnFormatCodes
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.CopyOutResponse {
+extension PostgresCopyOutResponseMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -42,10 +40,10 @@ extension PostgresRawMessage.CopyOutResponse {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func copyOutResponse(logger: Logger, _ closure: (consuming CopyOutResponse) throws -> Void) throws {
+    public func copyOutResponse(logger: Logger, _ closure: (consuming PostgresCopyOutResponseMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as CopyOutResponse")
+        logger.info("Parsing PostgresRawMessage as PostgresCopyOutResponseMessage")
         #endif
-        try CopyOutResponse.parse(message: self, closure)
+        try PostgresCopyOutResponseMessage.parse(message: self, closure)
     }
 }

@@ -2,16 +2,14 @@
 import Logging
 import PostgreSQLBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BINDCOMPLETE
-    public struct BindComplete: PostgresBindCompleteMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BINDCOMPLETE
+public struct PostgresBindCompleteMessage: PostgresBindCompleteMessageProtocol {
+    public init() {
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.BindComplete {
+extension PostgresBindCompleteMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -26,10 +24,10 @@ extension PostgresRawMessage.BindComplete {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func bindComplete(logger: Logger, _ closure: (consuming BindComplete) throws -> Void) throws {
+    public func bindComplete(logger: Logger, _ closure: (consuming PostgresBindCompleteMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as BindComplete")
+        logger.info("Parsing PostgresRawMessage as PostgresBindCompleteMessage")
         #endif
-        try BindComplete.parse(message: self, closure)
+        try PostgresBindCompleteMessage.parse(message: self, closure)
     }
 }

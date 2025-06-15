@@ -3,32 +3,30 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PARSE
-    public struct Parse<
-            let parameterDataTypeObjectIDsCount: Int
-        >: PostgresParseMessageProtocol {
-        public var destinationName:String
-        public var query:String
-        public var parameterDataTypes:Int16
-        public var parameterDataTypeObjectIDs:InlineArray<parameterDataTypeObjectIDsCount, Int32>
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PARSE
+public struct PostgresParseMessage<
+        let parameterDataTypeObjectIDsCount: Int
+    >: PostgresParseMessageProtocol {
+    public var destinationName:String
+    public var query:String
+    public var parameterDataTypes:Int16
+    public var parameterDataTypeObjectIDs:InlineArray<parameterDataTypeObjectIDsCount, Int32>
 
-        public init(
-            destinationName: String,
-            query: String,
-            parameterDataTypes: Int16,
-            parameterDataTypeObjectIDs: InlineArray<parameterDataTypeObjectIDsCount, Int32>
-        ) {
-            self.destinationName = destinationName
-            self.query = query
-            self.parameterDataTypes = parameterDataTypes
-            self.parameterDataTypeObjectIDs = parameterDataTypeObjectIDs
-        }
+    public init(
+        destinationName: String,
+        query: String,
+        parameterDataTypes: Int16,
+        parameterDataTypeObjectIDs: InlineArray<parameterDataTypeObjectIDsCount, Int32>
+    ) {
+        self.destinationName = destinationName
+        self.query = query
+        self.parameterDataTypes = parameterDataTypes
+        self.parameterDataTypeObjectIDs = parameterDataTypeObjectIDs
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Parse {
+extension PostgresParseMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try destinationName.withUTF8 { destinationNameBuffer in
@@ -55,7 +53,7 @@ extension PostgresRawMessage.Parse {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Parse {
+extension PostgresParseMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -72,7 +70,7 @@ extension PostgresRawMessage {
         query: String,
         parameterDataTypes: Int16,
         parameterDataTypeObjectIDs: InlineArray<parameterDataTypeObjectIDsCount, Int32>
-    ) -> Parse<parameterDataTypeObjectIDsCount> {
-        return Parse(destinationName: destinationName, query: query, parameterDataTypes: parameterDataTypes, parameterDataTypeObjectIDs: parameterDataTypeObjectIDs)
+    ) -> PostgresParseMessage<parameterDataTypeObjectIDsCount> {
+        return PostgresParseMessage(destinationName: destinationName, query: query, parameterDataTypes: parameterDataTypes, parameterDataTypeObjectIDs: parameterDataTypeObjectIDs)
     }
 }

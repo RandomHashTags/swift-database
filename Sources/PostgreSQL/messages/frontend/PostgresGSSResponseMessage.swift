@@ -3,19 +3,17 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSRESPONSE
-    public struct GSSResponse: PostgresGSSResponseMessageProtocol {
-        public var data:String // TODO: support binary format
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSRESPONSE
+public struct PostgresGSSResponseMessage: PostgresGSSResponseMessageProtocol {
+    public var data:String // TODO: support binary format
 
-        public init(data: String) {
-            self.data = data
-        }
+    public init(data: String) {
+        self.data = data
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.GSSResponse {
+extension PostgresGSSResponseMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         // TODO: implement
@@ -23,7 +21,7 @@ extension PostgresRawMessage.GSSResponse {
 }
 
 // MARK: Write
-extension PostgresRawMessage.GSSResponse {
+extension PostgresGSSResponseMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -35,7 +33,7 @@ extension PostgresRawMessage.GSSResponse {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func gssResponse(data: String) -> GSSResponse {
-        return GSSResponse(data: data)
+    public static func gssResponse(data: String) -> PostgresGSSResponseMessage {
+        return PostgresGSSResponseMessage(data: data)
     }
 }

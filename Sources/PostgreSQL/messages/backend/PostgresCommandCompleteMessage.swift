@@ -2,19 +2,17 @@
 import Logging
 import PostgreSQLBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COMMANDCOMPLETE
-    public struct CommandComplete: PostgresCommandCompleteMessageProtocol {
-        public var commandTag:String
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COMMANDCOMPLETE
+public struct PostgresCommandCompleteMessage: PostgresCommandCompleteMessageProtocol {
+    public var commandTag:String
 
-        public init(commandTag: String) {
-            self.commandTag = commandTag
-        }
+    public init(commandTag: String) {
+        self.commandTag = commandTag
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.CommandComplete {
+extension PostgresCommandCompleteMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -29,10 +27,10 @@ extension PostgresRawMessage.CommandComplete {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func commandComplete(logger: Logger, _ closure: (consuming CommandComplete) throws -> Void) throws {
+    public func commandComplete(logger: Logger, _ closure: (consuming PostgresCommandCompleteMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as CommandComplete")
+        logger.info("Parsing PostgresRawMessage as PostgresCommandCompleteMessage")
         #endif
-        try CommandComplete.parse(message: self, closure)
+        try PostgresCommandCompleteMessage.parse(message: self, closure)
     }
 }

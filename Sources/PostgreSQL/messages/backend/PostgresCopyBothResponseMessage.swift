@@ -2,21 +2,19 @@
 import Logging
 import PostgreSQLBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYBOTHRESPONSE
-    public struct CopyBothResponse: PostgresCopyBothResponseMessageProtocol {
-        public var format:Int8
-        public var columnFormatCodes:[Int16]
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYBOTHRESPONSE
+public struct PostgresCopyBothResponseMessage: PostgresCopyBothResponseMessageProtocol {
+    public var format:Int8
+    public var columnFormatCodes:[Int16]
 
-        public init(format: Int8, columnFormatCodes: [Int16]) {
-            self.format = format
-            self.columnFormatCodes = columnFormatCodes
-        }
+    public init(format: Int8, columnFormatCodes: [Int16]) {
+        self.format = format
+        self.columnFormatCodes = columnFormatCodes
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.CopyBothResponse {
+extension PostgresCopyBothResponseMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -42,10 +40,10 @@ extension PostgresRawMessage.CopyBothResponse {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func copyBothResponse(logger: Logger, _ closure: (consuming CopyBothResponse) throws -> Void) throws {
+    public func copyBothResponse(logger: Logger, _ closure: (consuming PostgresCopyBothResponseMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as CopyBothResponse")
+        logger.info("Parsing PostgresRawMessage as PostgresCopyBothResponseMessage")
         #endif
-        try CopyBothResponse.parse(message: self, closure)
+        try PostgresCopyBothResponseMessage.parse(message: self, closure)
     }
 }

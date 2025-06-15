@@ -2,21 +2,19 @@
 import Logging
 import PostgreSQLBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BACKENDKEYDATA
-    public struct BackendKeyData: PostgresBackendKeyDataMessageProtocol {
-        public let processID:Int32
-        public let secretKey:Int32
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BACKENDKEYDATA
+public struct PostgresBackendKeyDataMessage: PostgresBackendKeyDataMessageProtocol {
+    public let processID:Int32
+    public let secretKey:Int32
 
-        public init(processID: Int32, secretKey: Int32) {
-            self.processID = processID
-            self.secretKey = secretKey
-        }
+    public init(processID: Int32, secretKey: Int32) {
+        self.processID = processID
+        self.secretKey = secretKey
     }
 }
 
 // MARK: Parse
-extension PostgresRawMessage.BackendKeyData {
+extension PostgresBackendKeyDataMessage {
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -33,10 +31,10 @@ extension PostgresRawMessage.BackendKeyData {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func backendKeyData(logger: Logger, _ closure: (consuming BackendKeyData) throws -> Void) throws {
+    public func backendKeyData(logger: Logger, _ closure: (consuming PostgresBackendKeyDataMessage) throws -> Void) throws {
         #if DEBUG
-        logger.info("Parsing PostgresRawMessage as BackendKeyData")
+        logger.info("Parsing PostgresRawMessage as PostgresBackendKeyDataMessage")
         #endif
-        try BackendKeyData.parse(message: self, closure)
+        try PostgresBackendKeyDataMessage.parse(message: self, closure)
     }
 }

@@ -3,16 +3,14 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-SSLREQUEST
-    public struct SSLRequest: PostgresSSLRequestMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-SSLREQUEST
+public struct PostgresSSLRequestMessage: PostgresSSLRequestMessageProtocol {
+    public init() {
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.SSLRequest {
+extension PostgresSSLRequestMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 8, { buffer in
@@ -25,7 +23,7 @@ extension PostgresRawMessage.SSLRequest {
 }
 
 // MARK: Write
-extension PostgresRawMessage.SSLRequest {
+extension PostgresSSLRequestMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -37,7 +35,7 @@ extension PostgresRawMessage.SSLRequest {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func sslRequest() -> SSLRequest {
-        return SSLRequest()
+    public static func sslRequest() -> PostgresSSLRequestMessage {
+        return PostgresSSLRequestMessage()
     }
 }

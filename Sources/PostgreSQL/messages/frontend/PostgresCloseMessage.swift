@@ -3,19 +3,17 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-CLOSE
-    public struct Close: PostgresCloseMessageProtocol {
-        public var type:CloseType
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-CLOSE
+public struct PostgresCloseMessage: PostgresCloseMessageProtocol {
+    public var type:CloseType
 
-        public init(type: CloseType) {
-            self.type = type
-        }
+    public init(type: CloseType) {
+        self.type = type
     }
 }
 
 // MARK: CloseType
-extension PostgresRawMessage.Close {
+extension PostgresCloseMessage {
     public enum CloseType: Sendable {
         case preparedStatement(name: String)
         case portal(name: String)
@@ -31,7 +29,7 @@ extension PostgresRawMessage.Close {
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Close {
+extension PostgresCloseMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         switch type {
@@ -53,7 +51,7 @@ extension PostgresRawMessage.Close {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Close {
+extension PostgresCloseMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -65,7 +63,7 @@ extension PostgresRawMessage.Close {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func close(type: Close.CloseType) -> Close {
-        return Close(type: type)
+    public static func close(type: PostgresCloseMessage.CloseType) -> PostgresCloseMessage {
+        return PostgresCloseMessage(type: type)
     }
 }

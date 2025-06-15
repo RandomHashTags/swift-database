@@ -3,33 +3,31 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BIND
-    public struct Bind<
-            let trailingParameterFormatCodesCount: Int,
-            let parameterValuesCount: Int
-        >: PostgresBindMessageProtocol { // TODO: finish
-        public var destinationPortal:String
-        public var sourcePreparedStatement:String
-        public var trailingParameterFormatCodes:InlineArray<trailingParameterFormatCodesCount, Int16>
-        public var parameters:InlineArray<parameterValuesCount, Parameters<Parameter>>
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BIND
+public struct PostgresBindMessage<
+        let trailingParameterFormatCodesCount: Int,
+        let parameterValuesCount: Int
+    >: PostgresBindMessageProtocol { // TODO: finish
+    public var destinationPortal:String
+    public var sourcePreparedStatement:String
+    public var trailingParameterFormatCodes:InlineArray<trailingParameterFormatCodesCount, Int16>
+    public var parameters:InlineArray<parameterValuesCount, Parameters<Parameter>>
 
-        public init(
-            destinationPortal: String,
-            sourcePreparedStatement: String,
-            trailingParameterFormatCodes: InlineArray<trailingParameterFormatCodesCount, Int16>,
-            parameters: InlineArray<parameterValuesCount, Parameters<Parameter>>
-        ) {
-            self.destinationPortal = destinationPortal
-            self.sourcePreparedStatement = sourcePreparedStatement
-            self.trailingParameterFormatCodes = trailingParameterFormatCodes
-            self.parameters = parameters
-        }
+    public init(
+        destinationPortal: String,
+        sourcePreparedStatement: String,
+        trailingParameterFormatCodes: InlineArray<trailingParameterFormatCodesCount, Int16>,
+        parameters: InlineArray<parameterValuesCount, Parameters<Parameter>>
+    ) {
+        self.destinationPortal = destinationPortal
+        self.sourcePreparedStatement = sourcePreparedStatement
+        self.trailingParameterFormatCodes = trailingParameterFormatCodes
+        self.parameters = parameters
     }
 }
 
 // MARK: Parameter
-extension PostgresRawMessage.Bind {
+extension PostgresBindMessage {
     public struct Parameters<each T: Sendable>: Sendable {
         public var values:(repeat each T)
 
@@ -47,7 +45,7 @@ extension PostgresRawMessage.Bind {
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Bind {
+extension PostgresBindMessage {
     @inlinable
     public func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         // TODO: implement
@@ -55,7 +53,7 @@ extension PostgresRawMessage.Bind {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Bind {
+extension PostgresBindMessage {
     @inlinable
     public func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {

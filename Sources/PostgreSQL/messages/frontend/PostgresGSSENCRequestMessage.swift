@@ -3,16 +3,14 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSENCREQUEST
-    public struct GSSENCRequest: PostgresGSSENCRequestMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSENCREQUEST
+public struct PostgresGSSENCRequestMessage: PostgresGSSENCRequestMessageProtocol {
+    public init() {
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.GSSENCRequest {
+extension PostgresGSSENCRequestMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 8, { buffer in
@@ -25,7 +23,7 @@ extension PostgresRawMessage.GSSENCRequest {
 }
 
 // MARK: Write
-extension PostgresRawMessage.GSSENCRequest {
+extension PostgresGSSENCRequestMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -37,7 +35,7 @@ extension PostgresRawMessage.GSSENCRequest {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func gssencRequest() -> GSSENCRequest {
-        return GSSENCRequest()
+    public static func gssencRequest() -> PostgresGSSENCRequestMessage {
+        return PostgresGSSENCRequestMessage()
     }
 }

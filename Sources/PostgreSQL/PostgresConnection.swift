@@ -75,7 +75,7 @@ extension PostgresConnection {
         database: String
     ) async throws {
         try establishConnection(address: address, port: port)
-        var startupMessage = PostgresRawMessage.StartupMessage(parameters: [
+        var startupMessage = PostgresStartupMessage(parameters: [
             "user": user,
             "database" : database
         ])

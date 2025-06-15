@@ -3,16 +3,14 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-FLUSH
-    public struct Flush: PostgresFlushMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-FLUSH
+public struct PostgresFlushMessage: PostgresFlushMessageProtocol {
+    public init() {
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Flush {
+extension PostgresFlushMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         let capacity = 5
@@ -25,7 +23,7 @@ extension PostgresRawMessage.Flush {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Flush {
+extension PostgresFlushMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -37,7 +35,7 @@ extension PostgresRawMessage.Flush {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func flush() -> Flush {
-        return Flush()
+    public static func flush() -> PostgresFlushMessage {
+        return PostgresFlushMessage()
     }
 }

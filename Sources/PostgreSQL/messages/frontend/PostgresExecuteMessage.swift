@@ -3,24 +3,22 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-EXECUTE
-    public struct Execute: PostgresExecuteMessageProtocol {
-        public var name:String
-        public var maximumReturnedRows:Int32
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-EXECUTE
+public struct PostgresExecuteMessage: PostgresExecuteMessageProtocol {
+    public var name:String
+    public var maximumReturnedRows:Int32
 
-        public init(
-            name: String,
-            maximumReturnedRows: Int32
-        ) {
-            self.name = name
-            self.maximumReturnedRows = maximumReturnedRows
-        }
+    public init(
+        name: String,
+        maximumReturnedRows: Int32
+    ) {
+        self.name = name
+        self.maximumReturnedRows = maximumReturnedRows
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Execute {
+extension PostgresExecuteMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         try name.withUTF8 { nameBuffer in
@@ -39,7 +37,7 @@ extension PostgresRawMessage.Execute {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Execute {
+extension PostgresExecuteMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -51,7 +49,7 @@ extension PostgresRawMessage.Execute {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func execute(name: String, maximumReturnedRows: Int32) -> Execute {
-        return Execute(name: name, maximumReturnedRows: maximumReturnedRows)
+    public static func execute(name: String, maximumReturnedRows: Int32) -> PostgresExecuteMessage {
+        return PostgresExecuteMessage(name: name, maximumReturnedRows: maximumReturnedRows)
     }
 }
