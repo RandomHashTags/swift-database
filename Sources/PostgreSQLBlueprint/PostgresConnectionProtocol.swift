@@ -5,7 +5,7 @@ import SwiftDatabaseBlueprint
 
 public protocol PostgresConnectionProtocol: SQLConnectionProtocol, ~Copyable where RawMessage == PostgresRawMessage {
     @inlinable
-    func readMessage(_ closure: (PostgresRawMessage) throws -> Void) throws
+    func readMessage(_ closure: (RawMessage) throws -> Void) throws
 
     @inlinable
     func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) throws
@@ -14,7 +14,7 @@ public protocol PostgresConnectionProtocol: SQLConnectionProtocol, ~Copyable whe
 // MARK: Read message
 extension PostgresConnectionProtocol {
     @inlinable
-    public func readMessage(_ closure: (PostgresRawMessage) throws -> Void) throws {
+    public func readMessage(_ closure: (RawMessage) throws -> Void) throws {
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 5, { headerBuffer in
             let received = receive(baseAddress: headerBuffer.baseAddress!, length: 5)
             guard received == 5 else {
@@ -34,7 +34,7 @@ extension PostgresConnectionProtocol {
                 #if DEBUG
                 logger.info("Received message of type \(type) with body of length \(length)")
                 #endif
-                try closure(PostgresRawMessage(type: type, body: buffer))
+                try closure(RawMessage(type: type, body: buffer))
             })
         })
     }

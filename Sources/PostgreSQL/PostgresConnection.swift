@@ -18,8 +18,13 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 public struct PostgresConnection: PostgresConnectionProtocol {
+    public typealias QueryMessage = PostgresQueryMessage
+
     public var fileDescriptor:Int32
     public var logger:Logger
+
+    @usableFromInline
+    var backendKeyData:PostgresBackendKeyDataMessage?
 
     public init() {
         fileDescriptor = -1
@@ -87,7 +92,7 @@ extension PostgresConnection {
 // MARK: Authenticate
 extension PostgresConnection {
     @inlinable
-    func authenticate() throws {
+    mutating func authenticate() throws {
         var authenticationStatus = AuthenticationStatus.loading
         while authenticationStatus == .loading {
             try readMessage { msg in
@@ -101,17 +106,55 @@ extension PostgresConnection {
                             throw PostgresError.authentication("not yet supported: \(auth)")
                         }
                     }
-                case PostgresRawMessage.BackendType.readyForQuery.rawValue:
-                    break
                 case PostgresRawMessage.BackendType.errorResponse.rawValue:
                     try msg.errorResponse(logger: logger) {
                         throw PostgresError.authentication("received errorResponse: \($0.value ?? "of type \($0.type)")")
                     }
+                case PostgresRawMessage.BackendType.negotiateProtocolVersion.rawValue:
+                    throw PostgresError.authentication("not yet supported: protocol version negotation")
                 default:
                     throw PostgresError.authentication("unhandled message type: \(msg.type)")
                 }
             }
         }
+        try waitUntilReadyForQuery()
+    }
+}
+
+// MARK: Wait until R4Q
+extension PostgresConnection {
+    @inlinable
+    mutating func waitUntilReadyForQuery() throws {
+        var ready = false
+        while !ready {
+            try readMessage { msg in
+                switch msg.type {
+                case PostgresRawMessage.BackendType.backendKeyData.rawValue:
+                    try msg.backendKeyData(logger: logger, {
+                        backendKeyData = $0 // TODO: fix
+                    })
+                case PostgresRawMessage.BackendType.parameterStatus.rawValue:
+                    break
+                case PostgresRawMessage.BackendType.readyForQuery.rawValue:
+                    try msg.readyForQuery(logger: logger, { _ in
+                        ready = true
+                    })
+                case PostgresRawMessage.BackendType.noticeResponse.rawValue:
+                    try msg.noticeResponse(logger: logger, { _ in
+                        logger.warning("received notice response")
+                    })
+                case PostgresRawMessage.BackendType.errorResponse.rawValue:
+                    try msg.errorResponse(logger: logger) {
+                        throw PostgresError.readyForQuery("waitUntilReadyForQuery;received errorResponse: \($0.value ?? "of type \($0.type)")")
+                    }
+                default:
+                    throw PostgresError.readyForQuery("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
+                }
+            }
+        }
+        #if DEBUG
+        logger.info("ready for query")
+        #endif
     }
 }
 
@@ -134,13 +177,15 @@ extension PostgresConnection {
 
 // MARK: Query
 extension PostgresConnection {
-    public func query(_ query: String) async throws -> RawMessage { // TODO: return a concrete query response
+    public func query(_ query: String) async throws -> QueryMessage.Response { // TODO: return a concrete query response
         var payload = RawMessage.query(query)
         try sendMessage(&payload)
         return try await withCheckedThrowingContinuation { continuation in
             do {
                 try readMessage { msg in
-                    continuation.resume(returning: msg)
+                    try QueryMessage.Response.parse(logger: logger, msg: msg, {
+                        continuation.resume(returning: $0)
+                    })
                 }
             } catch {
                 continuation.resume(throwing: error)

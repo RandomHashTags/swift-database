@@ -1,3 +1,6 @@
 
-public protocol PostgresQueryMessageProtocol: PostgresFrontendMessageProtocol, ~Copyable {
+import SQLBlueprint
+
+public protocol PostgresQueryMessageProtocol: SQLQueryMessageProtocol, PostgresFrontendMessageProtocol, ~Copyable {
+    associatedtype ConcreteResponse
 }

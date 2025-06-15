@@ -83,3 +83,13 @@ extension PostgresError {
 extension PostgresError {
     @inlinable public static func errorResponse(_ reason: String = "") -> PostgresError { PostgresError(identifier: "errorResponseError", reason: reason) }
 }
+
+// MARK: Notice response
+extension PostgresError {
+    @inlinable public static func noticeResponse(_ reason: String = "") -> PostgresError { PostgresError(identifier: "noticeResponseError", reason: reason) }
+}
+
+// MARK: Ready for query
+extension PostgresError {
+    @inlinable public static func readyForQuery(_ reason: String = "") -> PostgresError { PostgresError(identifier: "readyForQueryError", reason: reason) }
+}
