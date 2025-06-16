@@ -123,9 +123,7 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
             if self[i] == 0 {
                 let length = i - offset + 1
                 return (withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length, { buffer in
-                    for i in offset...i {
-                        buffer[i] = self[offset + i]
-                    }
+                    memcpy(buffer.baseAddress!, self.baseAddress! + offset, i - offset + 1)
                     return String.init(cString: buffer.baseAddress!)
                 }), length)
             }

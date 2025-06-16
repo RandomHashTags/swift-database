@@ -50,7 +50,9 @@ extension PostgresConnection {
             throw PostgresError.connectionAlreadyEstablished()
         }
         fileDescriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
-        guard fileDescriptor >= 0 else { fatalError("socket error") }
+        guard fileDescriptor >= 0 else {
+            throw PostgresError.socketFailure("errno=\(errno)")
+        }
 
         var addrIn = sockaddr_in()
         addrIn.sin_family = sa_family_t(AF_INET)
@@ -65,7 +67,9 @@ extension PostgresConnection {
                 connect(fileDescriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
-        guard connectResult == 0 else { fatalError("connect error") }
+        guard connectResult == 0 else {
+            throw PostgresError.connectionFailure("errno=\(errno)")
+        }
         logger = Logger(label: "database.swift.postgresFileDescriptor\(fileDescriptor)")
     }
 }
@@ -117,6 +121,9 @@ extension PostgresConnection {
                 }
             }
         }
+        #if DEBUG
+        logger.notice("authentication successful")
+        #endif
         try waitUntilReadyForQuery()
     }
 }
@@ -125,6 +132,9 @@ extension PostgresConnection {
 extension PostgresConnection {
     @inlinable
     mutating func waitUntilReadyForQuery() throws {
+        #if DEBUG
+        logger.notice("waiting until a Ready For Query message is recevied...")
+        #endif
         var ready = false
         while !ready {
             try readMessage { msg in
@@ -134,7 +144,9 @@ extension PostgresConnection {
                         backendKeyData = $0 // TODO: fix
                     })
                 case PostgresRawMessage.BackendType.parameterStatus.rawValue:
-                    break
+                    try msg.parameterStatus(logger: logger, {
+                        logger.info("parameterStatus=\($0)")
+                    })
                 case PostgresRawMessage.BackendType.readyForQuery.rawValue:
                     try msg.readyForQuery(logger: logger, { _ in
                         ready = true
@@ -153,7 +165,7 @@ extension PostgresConnection {
             }
         }
         #if DEBUG
-        logger.info("ready for query")
+        logger.notice("ready for query")
         #endif
     }
 }

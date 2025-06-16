@@ -71,7 +71,7 @@ let package = Package(
     ],
     targets: [
         // MARK: ModelMacros
-        .target(
+        .macro(
             name: "ModelMacros",
             dependencies: [
                 .product(name: "SwiftSyntax", package: "swift-syntax"),

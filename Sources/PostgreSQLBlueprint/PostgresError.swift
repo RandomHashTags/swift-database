@@ -24,6 +24,36 @@ extension PostgresError {
     @inlinable public static func connectionAlreadyEstablished(_ reason: String = "") -> PostgresError { PostgresError(identifier: "connectionAlreadyEstablished", reason: reason) }
 }
 
+// MARK: Connection failure
+extension PostgresError {
+    @inlinable public static func connectionFailure(_ reason: String = "") -> PostgresError { PostgresError(identifier: "connectionFailure", reason: reason) }
+}
+
+// MARK: Socket failure
+extension PostgresError {
+    @inlinable public static func socketFailure(_ reason: String = "") -> PostgresError { PostgresError(identifier: "socketFailure", reason: reason) }
+}
+
+
+
+
+
+
+
+
+
+
+// MARK: Messages
+
+
+
+
+
+
+
+
+
+
 // MARK: Authentication
 extension PostgresError {
     @inlinable public static func authentication(_ reason: String = "") -> PostgresError { PostgresError(identifier: "authenticationError", reason: reason) }
