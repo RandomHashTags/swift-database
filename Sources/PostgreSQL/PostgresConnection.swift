@@ -108,7 +108,7 @@ extension PostgresConnection {
                     }
                 case PostgresRawMessage.BackendType.errorResponse.rawValue:
                     try msg.errorResponse(logger: logger) {
-                        throw PostgresError.authentication("received errorResponse: \($0.value ?? "of type \($0.type)")")
+                        throw PostgresError.authentication("received errorResponse: \($0.values)")
                     }
                 case PostgresRawMessage.BackendType.negotiateProtocolVersion.rawValue:
                     throw PostgresError.authentication("not yet supported: protocol version negotation")
@@ -145,7 +145,7 @@ extension PostgresConnection {
                     })
                 case PostgresRawMessage.BackendType.errorResponse.rawValue:
                     try msg.errorResponse(logger: logger) {
-                        throw PostgresError.readyForQuery("waitUntilReadyForQuery;received errorResponse: \($0.value ?? "of type \($0.type)")")
+                        throw PostgresError.readyForQuery("waitUntilReadyForQuery;received errorResponse: \($0.values)")
                     }
                 default:
                     throw PostgresError.readyForQuery("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
@@ -177,7 +177,7 @@ extension PostgresConnection {
 
 // MARK: Query
 extension PostgresConnection {
-    public func query(_ query: String) async throws -> QueryMessage.Response { // TODO: return a concrete query response
+    public func query(_ query: String) async throws -> QueryMessage.Response {
         var payload = RawMessage.query(query)
         try sendMessage(&payload)
         return try await withCheckedThrowingContinuation { continuation in

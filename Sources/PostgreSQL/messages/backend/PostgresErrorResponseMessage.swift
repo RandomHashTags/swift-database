@@ -4,12 +4,10 @@ import PostgreSQLBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
 public struct PostgresErrorResponseMessage: PostgresErrorResponseMessageProtocol {
-    public var type:UInt8
-    public var value:String?
+    public var values:[String] // TODO: support binary format
 
-    public init(type: UInt8, value: String?) {
-        self.type = type
-        self.value = value
+    public init(values: [String]) {
+        self.values = values
     }
 }
 
@@ -22,14 +20,25 @@ extension PostgresErrorResponseMessage {
         guard message.type == .E else {
             throw PostgresError.errorResponse("message type != .E")
         }
-        let type:UInt8 = message.body.loadUnalignedIntBigEndian(offset: 4)
-        var value:String?
-        if type == 0 {
-            value = nil
-        } else {
-            value = message.body.loadNullTerminatedString(offset: 5)
+        let length:Int32 = message.body.loadUnalignedInt() - 4
+        var startIndex = 4
+        var values = [String]()
+        while startIndex < length {
+            let fieldType:UInt8 = message.body.loadUnalignedIntBigEndian(offset: 4)
+            startIndex += 1
+            if fieldType == 0 {
+                break
+            } else {
+                if let terminatorIndex = message.body[startIndex...].firstIndex(of: 0) {
+                    let stringLength = terminatorIndex.distance(to: startIndex) + 1
+                    values.append(message.body.loadNullTerminatedStringBigEndian(offset: startIndex, count: stringLength))
+                    startIndex += stringLength
+                } else {
+                    throw PostgresError.errorResponse("didn't find string terminator (0) in message body after index \(startIndex)")
+                }
+            }
         }
-        try closure(.init(type: type, value: value))
+        try closure(.init(values: values))
     }
 }
 

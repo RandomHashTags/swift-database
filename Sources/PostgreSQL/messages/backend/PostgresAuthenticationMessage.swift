@@ -52,7 +52,7 @@ extension PostgresAuthenticationMessage {
             var i = 8
             while i < length {
                 if message.body[i] == 0 {
-                    names.append(message.body.loadNullTerminatedString(offset: startIndex))
+                    names.append(message.body.loadNullTerminatedStringBigEndian(offset: startIndex, count: i - startIndex + 1))
                     i += 1
                     startIndex = i
                 } else {

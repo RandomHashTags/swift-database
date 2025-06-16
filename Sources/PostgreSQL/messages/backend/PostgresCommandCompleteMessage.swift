@@ -20,7 +20,7 @@ extension PostgresCommandCompleteMessage {
         guard message.type == .C else {
             throw PostgresError.commandComplete("message type != .C")
         }
-        try closure(.init(commandTag: message.body.loadNullTerminatedString()))
+        try closure(.init(commandTag: message.body.loadNullTerminatedStringBigEndian(offset: 4, count: message.body.count - 4)))
     }
 }
 

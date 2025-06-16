@@ -2,7 +2,7 @@
 import Logging
 import PostgreSQLBlueprint
 
-/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DATAROW
 public struct PostgresDataRowMessage: PostgresErrorResponseMessageProtocol {
     public var columns:[String?] // TODO: support binary format
 
@@ -32,7 +32,7 @@ extension PostgresDataRowMessage {
                 if lengthOfColumnValue == -1 {
                     result = nil
                 } else {
-                    result = message.body.loadNullTerminatedString(offset: offset)
+                    result = message.body.loadNullTerminatedStringBigEndian(offset: offset, count: Int(lengthOfColumnValue))
                     offset += Int(lengthOfColumnValue)
                 }
                 columns.append(result)

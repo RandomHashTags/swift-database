@@ -21,17 +21,21 @@ extension PostgresNoticeResponseMessage {
             throw PostgresError.noticeResponse("message type != .N")
         }
         var fields = [String]()
-        let length:Int32 = message.body.loadUnalignedIntBigEndian()
+        let length:Int32 = message.body.loadUnalignedIntBigEndian() - 4
         var startIndex = 4
         while startIndex < length {
             let code:UInt8 = message.body.loadUnalignedInt(offset: startIndex)
+            startIndex += 1
             if code == 0 {
                 break
             } else {
-                startIndex += 1
-                let field = message.body.loadNullTerminatedString(offset: startIndex)
-                startIndex += field.utf8.count
-                fields.append(field)
+                if let terminatorIndex = message.body[startIndex...].firstIndex(of: 0) {
+                    let stringLength = terminatorIndex.distance(to: startIndex) + 1
+                    fields.append(message.body.loadNullTerminatedStringBigEndian(offset: startIndex, count: stringLength))
+                    startIndex += stringLength
+                } else {
+                    throw PostgresError.noticeResponse("didn't find string terminator (0) in message body after index \(startIndex)")
+                }
             }
         }
         try closure(.init(fields: fields))
