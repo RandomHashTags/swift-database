@@ -6,12 +6,14 @@ import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYDONE
 public struct PostgresCopyDoneMessage: PostgresCopyDoneMessageProtocol {
+    @inlinable
     public init() {
     }
 }
 
 // MARK: Parse
 extension PostgresCopyDoneMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

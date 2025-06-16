@@ -70,9 +70,31 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.6.3"),
     ],
     targets: [
+        // MARK: ModelMacros
+        .target(
+            name: "ModelMacros",
+            dependencies: [
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax")
+            ]
+        ),
+
+        // MARK: Model
+        .target(
+            name: "Model",
+            dependencies: [
+                "ModelMacros"
+            ]
+        ),
+
         // MARK: SwiftDatabaseUtilities
         .target(
-            name: "SwiftDatabaseUtilities"
+            name: "SwiftDatabaseUtilities",
+            dependencies: [
+                "Model"
+            ]
         ),
 
         // MARK: SwiftDatabaseMacros
@@ -91,6 +113,7 @@ let package = Package(
         .target(
             name: "SwiftDatabaseBlueprint",
             dependencies: [
+                "Model",
                 "SwiftDatabaseUtilities",
                 "SwiftDatabaseMacros"
             ]

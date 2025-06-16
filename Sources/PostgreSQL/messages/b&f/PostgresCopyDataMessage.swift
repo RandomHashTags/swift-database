@@ -5,13 +5,18 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYDATA
-public struct PostgresCopyDataMessage: PostgresCopyDataMessageProtocol {
-    public init() {
+public struct PostgresCopyDataMessage: PostgresCopyDataMessageProtocol, @unchecked Sendable {
+    public var data:UnsafeMutableBufferPointer<UInt8>
+
+    @inlinable
+    public init(data: UnsafeMutableBufferPointer<UInt8>) {
+        self.data = data
     }
 }
 
 // MARK: Parse
 extension PostgresCopyDataMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -19,7 +24,12 @@ extension PostgresCopyDataMessage {
         guard message.type == .d else {
             throw PostgresError.copyData("message type != .d")
         }
-        try closure(.init())
+        let length:Int32 = message.body.loadUnalignedIntBigEndian() - 4
+        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: Int(length), { buffer in
+            var i = 0
+            buffer.copyBuffer(message.body, offset: 4, count: Int(length), to: &i)
+            try closure(.init(data: buffer))
+        })
     }
 }
 
@@ -27,10 +37,10 @@ extension PostgresCopyDataMessage {
 extension PostgresCopyDataMessage {
     @inlinable
     public func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        // TODO: fix
         try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 5, { buffer in
             var i = 0
             buffer.writePostgresMessageHeader(type: .d, capacity: 5, to: &i)
+            buffer.copyBuffer(data, to: &i)
             try closure(buffer)
         })
     }
