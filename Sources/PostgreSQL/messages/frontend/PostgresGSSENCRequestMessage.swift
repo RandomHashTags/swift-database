@@ -5,6 +5,7 @@ import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSENCREQUEST
 public struct PostgresGSSENCRequestMessage: PostgresGSSENCRequestMessageProtocol {
+    @inlinable
     public init() {
     }
 }

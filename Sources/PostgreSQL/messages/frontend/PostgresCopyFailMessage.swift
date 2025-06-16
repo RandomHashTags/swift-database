@@ -7,6 +7,7 @@ import SwiftDatabaseBlueprint
 public struct PostgresCopyFailMessage: PostgresCopyFailMessageProtocol {
     public var reason:String
 
+    @inlinable
     public init(reason: String) {
         self.reason = reason
     }

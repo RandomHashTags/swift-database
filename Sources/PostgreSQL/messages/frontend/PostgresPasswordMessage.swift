@@ -7,6 +7,7 @@ import SwiftDatabaseBlueprint
 public struct PostgresPasswordMessage: PostgresPasswordMessageProtocol {
     public var password:String
 
+    @inlinable
     public init(password: String) {
         self.password = password
     }

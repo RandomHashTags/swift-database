@@ -8,6 +8,7 @@ public struct PostgresExecuteMessage: PostgresExecuteMessageProtocol {
     public var name:String
     public var maximumReturnedRows:Int32
 
+    @inlinable
     public init(
         name: String,
         maximumReturnedRows: Int32

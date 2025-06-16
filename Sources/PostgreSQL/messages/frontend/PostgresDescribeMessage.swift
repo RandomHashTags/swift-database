@@ -7,6 +7,7 @@ import SwiftDatabaseBlueprint
 public struct PostgresDescribeMessage: PostgresDescribeMessageProtocol {
     public var type:DescribeType
 
+    @inlinable
     public init(type: DescribeType) {
         self.type = type
     }

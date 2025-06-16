@@ -1,11 +1,13 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-NOTICERESPONSE
 public struct PostgresNoticeResponseMessage: PostgresNoticeResponseMessageProtocol {
     public let fields:[String] // TODO: support binary format
 
+    @inlinable
     public init(fields: [String]) {
         self.fields = fields
     }
@@ -13,6 +15,7 @@ public struct PostgresNoticeResponseMessage: PostgresNoticeResponseMessageProtoc
 
 // MARK: Parse
 extension PostgresNoticeResponseMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -29,13 +32,11 @@ extension PostgresNoticeResponseMessage {
             if code == 0 {
                 break
             } else {
-                if let terminatorIndex = message.body[startIndex...].firstIndex(of: 0) {
-                    let stringLength = terminatorIndex.distance(to: startIndex) + 1
-                    fields.append(message.body.loadNullTerminatedStringBigEndian(offset: startIndex, count: stringLength))
-                    startIndex += stringLength
-                } else {
-                    throw PostgresError.noticeResponse("didn't find string terminator (0) in message body after index \(startIndex)")
+                guard let (string, length) = message.body.loadNullTerminatedStringBigEndian(offset: startIndex) else {
+                    throw PostgresError.noticeResponse("failed to load string from message body after index \(startIndex)")
                 }
+                fields.append(string)
+                startIndex += length
             }
         }
         try closure(.init(fields: fields))

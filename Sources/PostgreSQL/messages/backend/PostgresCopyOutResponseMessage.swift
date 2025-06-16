@@ -1,12 +1,14 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COPYOUTRESPONSE
 public struct PostgresCopyOutResponseMessage: PostgresCopyOutResponseMessageProtocol {
     public var format:Int8
     public var columnFormatCodes:[Int16]
 
+    @inlinable
     public init(format: Int8, columnFormatCodes: [Int16]) {
         self.format = format
         self.columnFormatCodes = columnFormatCodes
@@ -15,6 +17,7 @@ public struct PostgresCopyOutResponseMessage: PostgresCopyOutResponseMessageProt
 
 // MARK: Parse
 extension PostgresCopyOutResponseMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

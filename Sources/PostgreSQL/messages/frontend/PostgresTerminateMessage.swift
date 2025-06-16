@@ -3,16 +3,15 @@ import PostgreSQLBlueprint
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-extension PostgresRawMessage {
-    /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-TERMINATE
-    public struct Terminate: PostgresTerminateMessageProtocol {
-        public init() {
-        }
+/// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-TERMINATE
+public struct PostgresTerminateMessage: PostgresTerminateMessageProtocol {
+    @inlinable
+    public init() {
     }
 }
 
 // MARK: Payload
-extension PostgresRawMessage.Terminate {
+extension PostgresTerminateMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         let capacity = 5
@@ -25,7 +24,7 @@ extension PostgresRawMessage.Terminate {
 }
 
 // MARK: Write
-extension PostgresRawMessage.Terminate {
+extension PostgresTerminateMessage {
     @inlinable
     public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
         try payload {
@@ -37,7 +36,7 @@ extension PostgresRawMessage.Terminate {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func terminate() -> Terminate {
-        return Terminate()
+    public static func terminate() -> PostgresTerminateMessage {
+        return PostgresTerminateMessage()
     }
 }

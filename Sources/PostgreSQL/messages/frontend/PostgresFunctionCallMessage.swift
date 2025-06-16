@@ -10,6 +10,7 @@ public struct PostgresFunctionCallMessage: PostgresFunctionCallMessageProtocol {
     public var arguments:[String?] // TODO: support binary format
     public var formatCode:Int16
 
+    @inlinable
     public init(
         objectID: Int32,
         argumentFormatCodes: [Int16],

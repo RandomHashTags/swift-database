@@ -1,11 +1,13 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
 public struct PostgresErrorResponseMessage: PostgresErrorResponseMessageProtocol {
     public var values:[String] // TODO: support binary format
 
+    @inlinable
     public init(values: [String]) {
         self.values = values
     }
@@ -13,6 +15,7 @@ public struct PostgresErrorResponseMessage: PostgresErrorResponseMessageProtocol
 
 // MARK: Parse
 extension PostgresErrorResponseMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -29,13 +32,11 @@ extension PostgresErrorResponseMessage {
             if fieldType == 0 {
                 break
             } else {
-                if let terminatorIndex = message.body[startIndex...].firstIndex(of: 0) {
-                    let stringLength = terminatorIndex.distance(to: startIndex) + 1
-                    values.append(message.body.loadNullTerminatedStringBigEndian(offset: startIndex, count: stringLength))
-                    startIndex += stringLength
-                } else {
-                    throw PostgresError.errorResponse("didn't find string terminator (0) in message body after index \(startIndex)")
+                guard let (string, length) = message.body.loadNullTerminatedStringBigEndian(offset: startIndex) else {
+                    throw PostgresError.errorResponse("failed to load string from message body after index \(startIndex)")
                 }
+                values.append(string)
+                startIndex += length
             }
         }
         try closure(.init(values: values))

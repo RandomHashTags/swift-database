@@ -10,6 +10,7 @@ public struct PostgresQueryMessage: PostgresQueryMessageProtocol {
 
     public var sql:String
 
+    @inlinable
     public init(_ sql: String) {
         self.sql = sql
     }
@@ -48,9 +49,9 @@ extension PostgresQueryMessage {
         case commandComplete(PostgresCommandCompleteMessage)
         case copyInResponse(PostgresCopyInResponseMessage)
         case copyOutResponse(PostgresCopyOutResponseMessage)
-        //case rowDescription(PostgresRowDescriptionMessage) // TODO: support
+        case rowDescription(PostgresRowDescriptionMessage)
         case dataRow(PostgresDataRowMessage)
-        //case emptyQueryResponse(PostgresEmptyQueryResponseMessage) // TODO: support
+        case emptyQueryResponse(PostgresEmptyQueryResponseMessage)
         case errorResponse(PostgresErrorResponseMessage)
         case readyForQuery(PostgresReadyForQueryMessage)
         case noticeResponse(PostgresNoticeResponseMessage)
@@ -71,13 +72,17 @@ extension PostgresQueryMessage {
                     try closure(.copyOutResponse($0))
                 })
             case PostgresRawMessage.BackendType.rowDescription.rawValue:
-                break // TODO: support
+                try msg.rowDescription(logger: logger, {
+                    try closure(.rowDescription($0))
+                })
             case PostgresRawMessage.BackendType.dataRow.rawValue:
                 try msg.dataRow(logger: logger, {
                     try closure(.dataRow($0))
                 })
             case PostgresRawMessage.BackendType.emptyQueryResponse.rawValue:
-                break // TODO: support
+                try msg.emptyQueryResponse(logger: logger, {
+                    try closure(.emptyQueryResponse($0))
+                })
             case PostgresRawMessage.BackendType.readyForQuery.rawValue:
                 try msg.readyForQuery(logger: logger, {
                     try closure(.readyForQuery($0))

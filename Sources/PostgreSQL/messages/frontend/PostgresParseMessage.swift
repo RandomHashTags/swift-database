@@ -12,6 +12,7 @@ public struct PostgresParseMessage<
     public var parameterDataTypes:Int16
     public var parameterDataTypeObjectIDs:InlineArray<parameterDataTypeObjectIDsCount, Int32>
 
+    @inlinable
     public init(
         destinationName: String,
         query: String,

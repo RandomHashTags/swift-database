@@ -115,6 +115,25 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
         return String(cString: baseAddress! + offset)
     }
 
+    @discardableResult
+    @inlinable
+    public func loadNullTerminatedStringBigEndian(offset: Int) -> (string: String, length: Int)? {
+        var i = offset
+        while i < count {
+            if self[i] == 0 {
+                let length = i - offset + 1
+                return (withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length, { buffer in
+                    for i in offset...i {
+                        buffer[i] = self[offset + i]
+                    }
+                    return String.init(cString: buffer.baseAddress!)
+                }), length)
+            }
+            i += 1
+        }
+        return nil
+    }
+
     @inlinable
     public func loadNullTerminatedStringBigEndian(offset: Int, count: Int) -> String {
         let other = baseAddress! + offset

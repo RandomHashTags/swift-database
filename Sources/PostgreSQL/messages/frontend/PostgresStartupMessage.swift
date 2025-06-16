@@ -8,6 +8,7 @@ public struct PostgresStartupMessage: PostgresStartupMessageProtocol {
     public var protocolVersion:Int32
     public var parameters:[String:String]
 
+    @inlinable
     public init(
         protocolVersion: Int32 = 196608, // protocol version 3.0 (0x00030000 = 196608)
         parameters: [String:String]

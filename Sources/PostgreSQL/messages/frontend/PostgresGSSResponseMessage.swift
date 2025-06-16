@@ -7,6 +7,7 @@ import SwiftDatabaseBlueprint
 public struct PostgresGSSResponseMessage: PostgresGSSResponseMessageProtocol {
     public var data:String // TODO: support binary format
 
+    @inlinable
     public init(data: String) {
         self.data = data
     }

@@ -1,11 +1,13 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-READYFORQUERY
 public struct PostgresReadyForQueryMessage: PostgresReadyForQueryMessageProtocol {
     public let transactionStatus:TransactionStatus
 
+    @inlinable
     public init(transactionStatus: TransactionStatus) {
         self.transactionStatus = transactionStatus
     }
@@ -22,6 +24,7 @@ extension PostgresReadyForQueryMessage {
 
 // MARK: Parse
 extension PostgresReadyForQueryMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

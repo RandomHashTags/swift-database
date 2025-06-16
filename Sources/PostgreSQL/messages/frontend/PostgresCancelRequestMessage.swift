@@ -8,6 +8,7 @@ public struct PostgresCancelRequestMessage: PostgresCancelRequestMessageProtocol
     public var processID:Int32
     public var secretKey:Int32
 
+    @inlinable
     public init(
         processID: Int32,
         secretKey: Int32

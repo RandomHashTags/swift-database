@@ -7,6 +7,7 @@ import SwiftDatabaseBlueprint
 public struct PostgresCloseMessage: PostgresCloseMessageProtocol {
     public var type:CloseType
 
+    @inlinable
     public init(type: CloseType) {
         self.type = type
     }

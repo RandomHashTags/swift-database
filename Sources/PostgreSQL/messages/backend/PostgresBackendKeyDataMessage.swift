@@ -1,12 +1,14 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BACKENDKEYDATA
 public struct PostgresBackendKeyDataMessage: PostgresBackendKeyDataMessageProtocol {
     public let processID:Int32
     public let secretKey:Int32
 
+    @inlinable
     public init(processID: Int32, secretKey: Int32) {
         self.processID = processID
         self.secretKey = secretKey
@@ -15,6 +17,7 @@ public struct PostgresBackendKeyDataMessage: PostgresBackendKeyDataMessageProtoc
 
 // MARK: Parse
 extension PostgresBackendKeyDataMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

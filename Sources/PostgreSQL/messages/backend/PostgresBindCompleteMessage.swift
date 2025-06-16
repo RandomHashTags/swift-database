@@ -1,15 +1,18 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-BINDCOMPLETE
 public struct PostgresBindCompleteMessage: PostgresBindCompleteMessageProtocol {
+    @inlinable
     public init() {
     }
 }
 
 // MARK: Parse
 extension PostgresBindCompleteMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

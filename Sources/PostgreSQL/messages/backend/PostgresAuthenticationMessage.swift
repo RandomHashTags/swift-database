@@ -1,7 +1,7 @@
 
 import Logging
 import PostgreSQLBlueprint
-import SQLBlueprint
+import SwiftDatabaseBlueprint
 
 public enum PostgresAuthenticationMessage: PostgresAuthenticationMessageProtocol, @unchecked Sendable {
     case ok
@@ -18,6 +18,7 @@ public enum PostgresAuthenticationMessage: PostgresAuthenticationMessageProtocol
 
 // MARK: Parse
 extension PostgresAuthenticationMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void
@@ -51,13 +52,12 @@ extension PostgresAuthenticationMessage {
             var startIndex = 8
             var i = 8
             while i < length {
-                if message.body[i] == 0 {
-                    names.append(message.body.loadNullTerminatedStringBigEndian(offset: startIndex, count: i - startIndex + 1))
-                    i += 1
-                    startIndex = i
-                } else {
-                    i += 1
+                guard let (string, length) = message.body.loadNullTerminatedStringBigEndian(offset: startIndex) else {
+                    throw PostgresError.authentication("failed to load string from message body after index \(startIndex)")
                 }
+                names.append(string)
+                i += length
+                startIndex = i
             }
             try closure(.sasl(names: names))
         case 11:

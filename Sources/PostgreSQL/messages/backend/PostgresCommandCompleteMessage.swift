@@ -1,11 +1,13 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-COMMANDCOMPLETE
 public struct PostgresCommandCompleteMessage: PostgresCommandCompleteMessageProtocol {
     public var commandTag:String
 
+    @inlinable
     public init(commandTag: String) {
         self.commandTag = commandTag
     }
@@ -13,6 +15,7 @@ public struct PostgresCommandCompleteMessage: PostgresCommandCompleteMessageProt
 
 // MARK: Parse
 extension PostgresCommandCompleteMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

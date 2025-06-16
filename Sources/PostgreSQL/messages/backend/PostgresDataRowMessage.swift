@@ -1,11 +1,13 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DATAROW
 public struct PostgresDataRowMessage: PostgresErrorResponseMessageProtocol {
     public var columns:[String?] // TODO: support binary format
 
+    @inlinable
     public init(columns: [String?]) {
         self.columns = columns
     }
@@ -13,6 +15,7 @@ public struct PostgresDataRowMessage: PostgresErrorResponseMessageProtocol {
 
 // MARK: Parse
 extension PostgresDataRowMessage {
+    @inlinable
     public static func parse(
         message: PostgresRawMessage,
         _ closure: (consuming Self) throws -> Void

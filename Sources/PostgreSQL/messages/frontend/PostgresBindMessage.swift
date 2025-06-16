@@ -13,6 +13,7 @@ public struct PostgresBindMessage<
     public var trailingParameterFormatCodes:InlineArray<trailingParameterFormatCodesCount, Int16>
     public var parameters:InlineArray<parameterValuesCount, Parameters<Parameter>>
 
+    @inlinable
     public init(
         destinationPortal: String,
         sourcePreparedStatement: String,
