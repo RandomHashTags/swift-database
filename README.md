@@ -15,14 +15,17 @@ We provide blueprint modules that lay out the API of the inner workings of each 
 - [ ] Connection pool
 - [ ] Memory-only database
 - [ ] PostgreSQL
+- [ ] Migrations
 - [ ] Models
+- [ ] SQL Builders
+- [ ] Prepared Statements
+- [ ] Macros for migrations
+- [ ] Macros for models
+- [ ] Macros for type-safe SQL/NoSQL commands
 
 ### TODO
 
 - [ ] Connection sharding
-- [ ] Prepared Statements
-- [ ] Macros for migrations
-- [ ] Macros for type-safe SQL/NoSQL commands
 - [ ] Pipeline support
 - [ ] Cache system
 - [ ] MicrosoftSQL

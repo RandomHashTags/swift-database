@@ -90,6 +90,6 @@ extension SQLConnectionPool {
     public func query(_ sql: String, _ closure: (T.RawMessage) async throws -> Void) async throws -> T.QueryMessage.ConcreteResponse {
         let connection = try await aquire()
         defer { release(connection) }
-        return try await connection.query(sql)
+        return try await connection.query(unsafeSQL: sql)
     }
 }

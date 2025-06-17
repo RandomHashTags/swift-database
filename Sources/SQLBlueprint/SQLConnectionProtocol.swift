@@ -14,6 +14,7 @@ import SwiftDatabaseBlueprint
 
 public protocol SQLConnectionProtocol: Sendable, ~Copyable {
     associatedtype RawMessage: SQLRawMessageProtocol
+
     associatedtype QueryMessage: SQLQueryMessageProtocol
 
     init()
@@ -24,7 +25,7 @@ public protocol SQLConnectionProtocol: Sendable, ~Copyable {
     @inlinable
     mutating func establishConnection(storage: DatabaseStorageMethod) async throws
 
-    func query(_ query: String) async throws -> QueryMessage.ConcreteResponse
+    func query(unsafeSQL: String) async throws -> QueryMessage.ConcreteResponse
 
     @inlinable
     func shutdownConnection()

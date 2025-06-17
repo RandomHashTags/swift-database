@@ -5,6 +5,5 @@ public protocol InlineArrayProtocol {
     var count: Int { get }
 }
 
-
 extension InlineArray: InlineArrayProtocol {
 }

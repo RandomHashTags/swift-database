@@ -8,11 +8,11 @@ import SwiftDatabaseBlueprint
 public struct PostgresQueryMessage: PostgresQueryMessageProtocol {
     public typealias ConcreteResponse = Response
 
-    public var sql:String
+    public var unsafeSQL:String
 
     @inlinable
-    public init(_ sql: String) {
-        self.sql = sql
+    public init(unsafeSQL: String) {
+        self.unsafeSQL = unsafeSQL
     }
 }
 
@@ -20,7 +20,7 @@ public struct PostgresQueryMessage: PostgresQueryMessageProtocol {
 extension PostgresQueryMessage {
     @inlinable
     public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try sql.withUTF8 { sqlBuffer in
+        try unsafeSQL.withUTF8 { sqlBuffer in
             let capacity = 5 + sqlBuffer.count + 1
             try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
                 var i = 0
@@ -101,7 +101,7 @@ extension PostgresQueryMessage {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func query(_ sql: String) -> PostgresQueryMessage {
-        return PostgresQueryMessage(sql)
+    public static func query(unsafeSQL: String) -> PostgresQueryMessage {
+        return PostgresQueryMessage(unsafeSQL: unsafeSQL)
     }
 }

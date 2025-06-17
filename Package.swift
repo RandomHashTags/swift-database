@@ -70,10 +70,16 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.6.3"),
     ],
     targets: [
+        // MARK: ModelUtilities
+        .target(
+            name: "ModelUtilities"
+        ),
+
         // MARK: ModelMacros
         .macro(
             name: "ModelMacros",
             dependencies: [
+                "ModelUtilities",
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -85,15 +91,8 @@ let package = Package(
         .target(
             name: "Model",
             dependencies: [
+                "ModelUtilities",
                 "ModelMacros"
-            ]
-        ),
-
-        // MARK: SwiftDatabaseUtilities
-        .target(
-            name: "SwiftDatabaseUtilities",
-            dependencies: [
-                "Model"
             ]
         ),
 
@@ -101,7 +100,7 @@ let package = Package(
         .macro(
             name: "SwiftDatabaseMacros",
             dependencies: [
-                "SwiftDatabaseUtilities",
+                "ModelUtilities",
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -114,7 +113,7 @@ let package = Package(
             name: "SwiftDatabaseBlueprint",
             dependencies: [
                 "Model",
-                "SwiftDatabaseUtilities",
+                "ModelUtilities",
                 "SwiftDatabaseMacros"
             ]
         ),
@@ -139,6 +138,7 @@ let package = Package(
         .target(
             name: "SQLBlueprint",
             dependencies: [
+                "Model",
                 "SwiftDatabaseBlueprint",
                 .product(name: "Logging", package: "swift-log")
             ]
@@ -164,6 +164,7 @@ let package = Package(
         .target(
             name: "PostgreSQLBlueprint",
             dependencies: [
+                "Model",
                 "SQLBlueprint",
                 "SwiftDatabaseBlueprint",
                 .product(name: "Logging", package: "swift-log")
@@ -173,6 +174,8 @@ let package = Package(
         .target(
             name: "PostgreSQL",
             dependencies: [
+                "Model",
+                "SQLBlueprint",
                 "PostgreSQLBlueprint",
                 "SwiftDatabaseBlueprint",
                 .product(name: "Logging", package: "swift-log")
@@ -190,6 +193,7 @@ let package = Package(
         .testTarget(
             name: "swift-databaseTests",
             dependencies: [
+                "Model",
                 "SwiftDatabaseBlueprint",
                 "NoSQLBlueprint",
                 "MongoDBBlueprint",

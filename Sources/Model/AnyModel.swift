@@ -1,4 +1,3 @@
 
-public protocol AnyModel: Sendable {
-    static var schema: String { get }
+public protocol AnyModel: SchemaProtocol, ~Copyable {
 }

@@ -1,5 +1,15 @@
 
-public protocol Model: AnyModel {
+import ModelUtilities
+
+@attached(member, names: arbitrary)
+public macro Model(
+    supportedDatabases: [DatabaseType],
+    schema: String,
+    schemaAlias: String? = nil,
+    revisions: [ModelRevision]
+) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
+
+public protocol Model: AnyModel, ~Copyable {
     associatedtype IDValue: Codable, Sendable
     var id: IDValue? { get set }
 }

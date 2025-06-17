@@ -1,6 +1,4 @@
 
-import SwiftDatabaseUtilities
-
 public protocol MigratableProtocol: Sendable {
     associatedtype DBVersion: DatabaseVersionProtocol
     associatedtype DBCommand: DatabaseCommandProtocol

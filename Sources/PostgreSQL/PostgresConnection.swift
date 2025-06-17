@@ -189,8 +189,9 @@ extension PostgresConnection {
 
 // MARK: Query
 extension PostgresConnection {
-    public func query(_ query: String) async throws -> QueryMessage.Response {
-        var payload = RawMessage.query(query)
+    @inlinable
+    public func query(unsafeSQL: String) async throws -> QueryMessage.Response {
+        var payload = RawMessage.query(unsafeSQL: unsafeSQL)
         try sendMessage(&payload)
         return try await withCheckedThrowingContinuation { continuation in
             do {

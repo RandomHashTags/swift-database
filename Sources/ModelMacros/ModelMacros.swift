@@ -5,5 +5,5 @@ import SwiftDiagnostics
 
 @main
 struct ModelMacros: CompilerPlugin {
-    let providingMacros:[any Macro.Type] = []
+    let providingMacros:[any Macro.Type] = [ModelMacro.self]
 }
