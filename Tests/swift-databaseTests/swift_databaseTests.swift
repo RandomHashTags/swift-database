@@ -23,6 +23,9 @@ func example() async throws {
 @Model(
     supportedDatabases: [.postgreSQL],
     schema: "users",
+    selectFilters: [
+        (["id"], ModelCondition(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "'PASSWORD'")))
+    ],
     revisions: [
         ModelRevision(
             version: (1, 0, 0),
@@ -40,4 +43,10 @@ struct UserAccount: Model {
     typealias IDValue = UInt64
 
     var id:IDValue?
+
+    var created:Date?
+    var deleted:Date?
+
+    var email:String
+    var password:String
 }

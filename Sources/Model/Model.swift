@@ -6,6 +6,7 @@ public macro Model(
     supportedDatabases: [DatabaseType],
     schema: String,
     schemaAlias: String? = nil,
+    selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
     revisions: [ModelRevision]
 ) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
 
