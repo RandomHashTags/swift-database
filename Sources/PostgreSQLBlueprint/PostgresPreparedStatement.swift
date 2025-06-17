@@ -5,6 +5,28 @@ public struct PostgresPreparedStatement<each Value: SQLDataTypeProtocol>: Sendab
     public let name:String
     public let prepareSQL:String
 
+    // Crashes compiler
+    /*@inlinable
+    public init<let fieldDataTypesCount: Int>(
+        name: String,
+        fieldDataTypes: InlineArray<fieldDataTypesCount, String>,
+        sql: String
+    ) {
+        self.name = name
+        var prepareSQL = "PREPARE \(name) ("
+        if fieldDataTypesCount > 0 {
+            var i = 0
+            let oneBeforeLast = fieldDataTypesCount - 1
+            while i < oneBeforeLast {
+                prepareSQL += ", " + fieldDataTypes[i]
+                i += 1
+            }
+            prepareSQL += (i == 0 ? "" : ", ") + fieldDataTypes[i]
+        }
+        prepareSQL += ") AS \(sql);"
+        self.prepareSQL = prepareSQL
+    }*/
+
     @inlinable
     public init(
         name: String,
@@ -12,14 +34,22 @@ public struct PostgresPreparedStatement<each Value: SQLDataTypeProtocol>: Sendab
         sql: String
     ) {
         self.name = name
-        prepareSQL = "PREPARE \(name) (\(fieldDataTypes.joined(separator: ", "))) AS \(sql);"
+        var prepareSQL = "PREPARE \(name) ("
+        let fieldDataTypesCount = fieldDataTypes.count
+        if fieldDataTypesCount > 0 {
+            var i = 0
+            let oneBeforeLast = fieldDataTypesCount - 1
+            while i < oneBeforeLast {
+                prepareSQL += ", " + fieldDataTypes[i]
+                i += 1
+            }
+            prepareSQL += (i == 0 ? "" : ", ") + fieldDataTypes[i]
+        }
+        prepareSQL += ") AS \(sql);"
+        self.prepareSQL = prepareSQL
     }
 }
 
-
-extension PostgresError {
-    static let test:PostgresPreparedStatement<String, String, Int> = PostgresPreparedStatement(name: "", fieldDataTypes: [], sql: "")
-}
 // MARK: Prepare
 extension PostgresPreparedStatement {
     @inlinable

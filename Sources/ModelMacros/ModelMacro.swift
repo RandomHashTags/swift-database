@@ -55,22 +55,22 @@ extension ModelMacro: MemberMacro {
                 .init(name: "Insert", fields: revision.fields, sql: insertSQL)
             )
         }
-        var preparedStatementsString = "public enum PreparedStatements {"
+        var preparedStatementsString = "public enum PreparedStatements: Sendable {"
 
         for statement in preparedStatements {
             if supportedDatabases.contains(.postgreSQL) {
                 let insertName = schema + "_insert"
                 let fieldDataTypes = statement.fields.map { $0.dataType }
                 var postgresPreparedStatement = "PostgresPreparedStatement<" + fieldDataTypes.joined(separator: ", ") + ">"
-                postgresPreparedStatement += " { .init(name: \"\(insertName)\", fieldDataTypes: \(fieldDataTypes), sql: \"\(statement.sql)\") }"
-                preparedStatementsString += "\n        @inlinable public static var postgreSQL\(statement.name): \(postgresPreparedStatement)"
+                postgresPreparedStatement += "(name: \"\(insertName)\", fieldDataTypes: \(fieldDataTypes), sql: \"\(statement.sql)\")"
+                preparedStatementsString += "\n        public static let postgreSQL\(statement.name) = \(postgresPreparedStatement)"
             }
         }
         preparedStatementsString += "\n    }"
         members.append(preparedStatementsString)
 
         var migrations = [(version: (Int, Int, Int), sql: String)]()
-        var migrationsString = "public enum Migrations {\n"
+        var migrationsString = "public enum Migrations: Sendable {\n"
         migrationsString += migrations.map({ "public static var v\($0.version.0)_\($0.version.1)_\($0.version.2): String { \"\($0.sql)\" }" }).joined(separator: "\n")
         migrationsString += "\n}"
         members.append(migrationsString)
