@@ -72,7 +72,7 @@ extension ModelMacro: MemberMacro {
 
         var preparedStatements = [PreparedStatement]()
         if let latestRevision = revisions.max(by: { $0.version > $1.version }) {
-            let insertSQL = "INSERT INTO \(schema) (\(latestRevision.fields.map({ $0.name }).joined(separator: ", "))) VALUES (\(latestRevision.fields.map({ _ in "?" }).joined(separator: ", ")));"
+            let insertSQL = "INSERT INTO \(schema) (\(latestRevision.fields.map({ $0.name }).joined(separator: ", "))) VALUES (\(latestRevision.fields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")));"
             let selectAllSQL = "SELECT * FROM \(schema);"
             preparedStatements.append(contentsOf: [
                 .init(name: "Insert", fields: latestRevision.fields, sql: insertSQL),
