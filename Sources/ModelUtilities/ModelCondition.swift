@@ -19,21 +19,35 @@ public struct ModelCondition: Sendable {
     public var sql: String {
         firstCondition.sql + (additionalConditions.isEmpty ? "" : " " + additionalConditions.map({ $0.joiningOperator.sql + " " + $0.condition.sql }).joined(separator: " "))
     }
+}
 
+// MARK: Value
+extension ModelCondition {
     public struct Value: Sendable {
         public let field:String
         public let `operator`:Operator
         public let value:String
 
         @inlinable
-        public init(
+        public init<T: StringProtocol>(
             field: String,
             operator: Operator,
-            value: String
+            value: T
         ) {
             self.field = field
             self.operator = `operator`
-            self.value = value
+            self.value = "'" + value + "'"
+        }
+
+        @inlinable
+        public init<T: FixedWidthInteger>(
+            field: String,
+            operator: Operator,
+            value: T
+        ) {
+            self.field = field
+            self.operator = `operator`
+            self.value = String(describing: value)
         }
 
         @inlinable
@@ -43,6 +57,7 @@ public struct ModelCondition: Sendable {
     }
 }
 
+// MARK: Operators
 extension ModelCondition {
     public enum JoiningOperator: String, Sendable {
         case and

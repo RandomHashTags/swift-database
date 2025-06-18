@@ -1,6 +1,5 @@
 
 import SQLBlueprint
-import SwiftDatabaseBlueprint
 
 public struct PostgresSQLBuilder: SQLBuilderProtocol {
     @usableFromInline

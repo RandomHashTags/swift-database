@@ -5,16 +5,6 @@ public struct PostgresPreparedStatement<each Value: SQLDataTypeProtocol>: SQLPre
     public let name:String
     public let prepareSQL:String
 
-    // Crashes compiler | https://github.com/swiftlang/swift/issues/82164#issuecomment-2981507249
-    /*@inlinable
-    public init<let fieldDataTypesCount: Int>(
-        name: String,
-        sql: String
-    ) {
-        self.name = name
-        self.prepareSQL = sql
-    }*/
-
     @inlinable
     public init(
         name: String,

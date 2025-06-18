@@ -1,13 +1,24 @@
 
 public struct ModelRevision: Sendable {
     public let version:(major: Int, minor: Int, patch: Int)
-    public let fields:[(name: String, dataType: String)]
 
+    /// Dictionary<FieldName, DataType>
+    public let addedFields:[String:String]
+
+    /// Dictionary<FieldName, DataType>
+    public let updatedFields:[String:String]
+
+    public let removedFields:Set<String>
+    
     public init(
         version: (major: Int, minor: Int, patch: Int),
-        fields: [(name: String, dataType: String)]
+        addedFields: [String:String] = [:],
+        updatedFields: [String:String] = [:],
+        removedFields: Set<String> = []
     ) {
         self.version = version
-        self.fields = fields
+        self.addedFields = addedFields
+        self.updatedFields = updatedFields
+        self.removedFields = removedFields
     }
 }

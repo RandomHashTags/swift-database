@@ -24,17 +24,17 @@ func example() async throws {
     supportedDatabases: [.postgreSQL],
     schema: "users",
     selectFilters: [
-        (["id"], ModelCondition(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "'PASSWORD'")))
+        (["id"], ModelCondition(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "PASSWORD")))
     ],
     revisions: [
         ModelRevision(
-            version: (1, 0, 0),
-            fields: [
-                ("id", "UInt64"),
-                ("created", "Date"),
-                ("deleted", "Date"),
-                ("email", "String"),
-                ("password", "String")
+            version: (0, 0, 1),
+            addedFields: [
+                "id": "UInt64",
+                "created": "Date",
+                "deleted": "Date",
+                "email": "String",
+                "password": "String"
             ]
         )
     ]

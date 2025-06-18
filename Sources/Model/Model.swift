@@ -1,7 +1,7 @@
 
 import ModelUtilities
 
-@attached(member, names: arbitrary)
+@attached(extension, names: arbitrary)
 public macro Model(
     supportedDatabases: [DatabaseType],
     schema: String,
