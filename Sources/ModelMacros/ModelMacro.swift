@@ -30,29 +30,29 @@ extension ModelMacro: ExtensionMacro {
             if let child = arg.as(LabeledExprSyntax.self) {
                 switch child.label?.text {
                 case "supportedDatabases":
-                    if let array = child.expression.as(ArrayExprSyntax.self)?.elements {
+                    if let array = child.expression.array?.elements {
                         for element in array {
-                            if let s = element.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text, let type = DatabaseType(rawValue: s) {
+                            if let s = element.expression.memberAccess?.declName.baseName.text, let type = DatabaseType(rawValue: s) {
                                 supportedDatabases.insert(type)
                             }
                         }
                     }
                 case "schema":
-                    schema = child.expression.as(StringLiteralExprSyntax.self)?.segments.description ?? ""
+                    schema = child.expression.stringLiteral?.text ?? ""
                 case "alias":
-                    alias = child.expression.as(StringLiteralExprSyntax.self)?.segments.description
+                    alias = child.expression.stringLiteral?.text
                 case "revisions":
-                    revisions = child.expression.as(ArrayExprSyntax.self)?.elements.compactMap({ CompiledModelRevision.parse(expr: $0.expression) }) ?? []
+                    revisions = child.expression.array?.elements.compactMap({ CompiledModelRevision.parse(expr: $0.expression) }) ?? []
                 case "selectFilters":
-                    if let array = child.expression.as(ArrayExprSyntax.self)?.elements {
+                    if let array = child.expression.array?.elements {
                         for element in array {
-                            if let tuple = element.expression.as(TupleExprSyntax.self) {
+                            if let tuple = element.expression.tuple {
                                 var fields:[String]? = nil
                                 var condition:ModelCondition? = nil
                                 for (i, t) in tuple.elements.enumerated() {
                                     switch i {
                                     case 0:
-                                        fields = t.expression.as(ArrayExprSyntax.self)?.elements.compactMap({ $0.expression.as(StringLiteralExprSyntax.self)?.segments.description })
+                                        fields = t.expression.array?.elements.compactMap({ $0.expression.stringLiteral?.text })
                                     case 1:
                                         condition = ModelCondition.parse(expr: t.expression)
                                     default:
@@ -106,18 +106,6 @@ extension ModelMacro: ExtensionMacro {
             .init(.init(stringLiteral: "extension \(structureName) {\n\(content)\n}"))
         ]
     }
-
-    private static func getPostgresPreparedStatement(
-        statement: PreparedStatement,
-        schema: String
-    ) -> String {
-        let name = schema + "_" + statement.name.lowercased()
-        let fieldDataTypes = statement.fields.map { $0.dataType }
-        let fieldDataTypesJoined = fieldDataTypes.joined(separator: ", ")
-        var postgresPreparedStatement = "PostgresPreparedStatement<" + fieldDataTypesJoined + ">"
-        postgresPreparedStatement += "(name: \"\(name)\", sql: \"PREPARE \(name) (\(fieldDataTypesJoined)) AS \(statement.sql)\")"
-        return "\n        public static let postgreSQL\(statement.name) = \(postgresPreparedStatement)"
-    }
 }
 
 // MARK: Prepared statements
@@ -130,16 +118,25 @@ extension ModelMacro {
         fields: [(name: String, dataType: String)]
     ) -> String {
         let latestFieldNames = fields.map { $0.name }
-        let insertSQL = "INSERT INTO \(schema) (\(latestFieldNames.joined(separator: ", "))) VALUES (\(fields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")));"
-        let selectAllSQL = "SELECT * FROM \(schema);"
+        let latestFieldNamesJoined = latestFieldNames.joined(separator: ", ")
+        let insertSQL = "INSERT INTO \(schema) (\(latestFieldNamesJoined)) VALUES (\(fields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")));"
+        let selectAllSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema);"
         var preparedStatements = [
-            PreparedStatement(name: "Insert", fields: fields, sql: insertSQL),
-            .init(name: "SelectAll", fields: fields, sql: selectAllSQL)
+            PreparedStatement(name: "Insert", parameters: fields, returningFields: [], sql: insertSQL),
+            .init(name: "SelectAll", parameters: [], returningFields: fields, sql: selectAllSQL)
         ]
 
         for (selectFields, condition) in selectFilters {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
-            preparedStatements.append(.init(name: "SelectAllWhere_" + condition.name, fields: fields, sql: sql))
+            var selectFieldsAndDataTypes = [(name: String, dataType: String)]()
+            for field in selectFields {
+                if let (_, dataType) = fields.first(where: { $0.name == field }) {
+                    selectFieldsAndDataTypes.append((field, dataType))
+                } else {
+                    continue
+                }
+            }
+            preparedStatements.append(.init(name: "SelectAllWhere_" + condition.name, parameters: [], returningFields: selectFieldsAndDataTypes, sql: sql))
         }
 
         var preparedStatementsString = "public enum PreparedStatements {"
@@ -150,6 +147,27 @@ extension ModelMacro {
         }
         preparedStatementsString += "\n    }"
         return preparedStatementsString
+    }
+    private static func getPostgresPreparedStatement(
+        statement: PreparedStatement,
+        schema: String
+    ) -> String {
+        let name = schema + "_" + statement.name.lowercased()
+        let parameterDataTypes = statement.parameters.map { $0.dataType }
+        let parameterDataTypesJoined = parameterDataTypes.joined(separator: ", ")
+        let subtype:String
+        let genericParameters:String
+        if parameterDataTypesJoined.isEmpty {
+            subtype = "Parameterless"
+            genericParameters = ""
+        } else {
+            subtype = ""
+            genericParameters = "<" + parameterDataTypesJoined + ">"
+        }
+        var postgresPreparedStatement = "Postgres\(subtype)PreparedStatement\(genericParameters)"
+        let sql = "PREPARE \(name)" + (statement.parameters.isEmpty ? "" : "(\(parameterDataTypesJoined))") + " AS \(statement.sql)"
+        postgresPreparedStatement += "(name: \"\(name)\", sql: \"\(sql)\")"
+        return "\n        public static let postgreSQL\(statement.name) = \(postgresPreparedStatement)"
     }
 }
 
@@ -197,7 +215,8 @@ extension ModelMacro {
 extension ModelMacro {
     struct PreparedStatement: Sendable {
         let name:String
-        let fields:[(name: String, dataType: String)]
+        let parameters:[(name: String, dataType: String)]
+        let returningFields:[(name: String, dataType: String)]
         let sql:String
     }
 }
@@ -205,8 +224,8 @@ extension ModelMacro {
 // MARK: Parse model condition
 extension ModelCondition {
     static func parse(expr: ExprSyntax) -> Self? {
-        guard let functionCall = expr.as(FunctionCallExprSyntax.self),
-                functionCall.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "ModelCondition" else {
+        guard let functionCall = expr.functionCall,
+                functionCall.calledExpression.declReference?.baseName.text == "ModelCondition" else {
             return nil
         }
         var name:String? = nil
@@ -215,19 +234,19 @@ extension ModelCondition {
         for argument in functionCall.arguments {
             switch argument.label?.text {
             case "name":
-                name = argument.expression.as(StringLiteralExprSyntax.self)?.segments.description
+                name = argument.expression.stringLiteral?.text
             case "firstCondition":
                 firstCondition = ModelCondition.Value.parse(expr: argument.expression)
             case "additionalConditions":
-                if let array = argument.expression.as(ArrayExprSyntax.self)?.elements {
+                if let array = argument.expression.array?.elements {
                     for element in array {
-                        if let tuple = element.expression.as(TupleExprSyntax.self)?.elements {
+                        if let tuple = element.expression.tuple?.elements {
                             var joiningOperator:ModelCondition.JoiningOperator? = nil
                             var condition:ModelCondition.Value? = nil
                             for (i, t) in tuple.enumerated() {
                                 switch i {
                                 case 0: // join operator
-                                    if let s = t.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text {
+                                    if let s = t.expression.memberAccess?.declName.baseName.text {
                                         joiningOperator = .init(rawValue: s)
                                     }
                                 case 1: // condition
@@ -252,9 +271,10 @@ extension ModelCondition {
 }
 extension ModelCondition.Value {
     static func parse(expr: ExprSyntax) -> Self? {
-        guard let functionCall = expr.as(FunctionCallExprSyntax.self),
-                (functionCall.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "Value"
-                || functionCall.calledExpression.as(MemberAccessExprSyntax.self)?.declName.baseName.text == "init") else {
+        guard let functionCall = expr.functionCall,
+                (functionCall.calledExpression.declReference?.baseName.text == "Value"
+                || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
+        else {
             return nil
         }
         var field:String? = nil
@@ -263,13 +283,13 @@ extension ModelCondition.Value {
         for argument in functionCall.arguments {
             switch argument.label?.text {
             case "field":
-                field = argument.expression.as(StringLiteralExprSyntax.self)?.segments.description
+                field = argument.expression.stringLiteral?.text
             case "operator":
-                if let s = argument.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text {
+                if let s = argument.expression.memberAccess?.declName.baseName.text {
                     `operator` = ModelCondition.Operator(rawValue: s)
                 }
             case "value":
-                value = argument.expression.as(StringLiteralExprSyntax.self)?.segments.description
+                value = argument.expression.stringLiteral?.text
             default:
                 break
             }
@@ -291,8 +311,9 @@ extension ModelMacro {
 // MARK: Parse model revision
 extension ModelMacro.CompiledModelRevision {
     static func parse(expr: ExprSyntax) -> Self? {
-        guard let functionCall = expr.as(FunctionCallExprSyntax.self),
-                functionCall.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "ModelRevision"
+        guard let functionCall = expr.functionCall,
+                (functionCall.calledExpression.declReference?.baseName.text == "ModelRevision"
+                || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
         else {
             return nil
         }
@@ -303,12 +324,12 @@ extension ModelMacro.CompiledModelRevision {
         for argument in functionCall.arguments {
             switch argument.label?.text {
             case "version":
-                let tuple = argument.expression.as(TupleExprSyntax.self)!.elements
+                let tuple = argument.expression.tuple!.elements
                 for (i, element) in tuple.enumerated() {
                     switch i {
-                    case 0: version.major = Int(element.expression.as(IntegerLiteralExprSyntax.self)!.literal.text)!
-                    case 1: version.minor = Int(element.expression.as(IntegerLiteralExprSyntax.self)!.literal.text)!
-                    case 2: version.patch = Int(element.expression.as(IntegerLiteralExprSyntax.self)!.literal.text)!
+                    case 0: version.major = element.expression.integer()!
+                    case 1: version.minor = element.expression.integer()!
+                    case 2: version.patch = element.expression.integer()!
                     default: break
                     }
                 }
@@ -317,7 +338,7 @@ extension ModelMacro.CompiledModelRevision {
             case "updatedFields":
                 updatedFields = parseDictionaryString(expr: argument.expression)
             case "removedFields":
-                if let values = argument.expression.as(ArrayExprSyntax.self)?.elements.compactMap({ $0.expression.as(StringLiteralExprSyntax.self)?.segments.description }) {
+                if let values = argument.expression.array?.elements.compactMap({ $0.expression.stringLiteral?.text }) {
                     removedFields = Set(values)
                 }
             default:
@@ -327,12 +348,12 @@ extension ModelMacro.CompiledModelRevision {
         return Self(version: version, addedFields: addedFields, updatedFields: updatedFields, removedFields: removedFields)
     }
     private static func parseDictionaryString(expr: ExprSyntax) -> [(name: String, dataType: String)] {
-        guard let content = expr.as(DictionaryExprSyntax.self)?.content else { return [] }
+        guard let content = expr.dictionary?.content else { return [] }
         var dic = [(name: String, dataType: String)]()
         switch content {
         case .elements(let elements):
             for element in elements {
-                if let key = element.key.as(StringLiteralExprSyntax.self)?.segments.description, let value = element.value.as(StringLiteralExprSyntax.self)?.segments.description {
+                if let key = element.key.stringLiteral?.text, let value = element.value.stringLiteral?.text {
                     dic.append((key, value))
                 }
             }

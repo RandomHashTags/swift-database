@@ -1,7 +1,7 @@
 
 import SQLBlueprint
 
-public struct PostgresPreparedStatement<each Value: SQLDataTypeProtocol>: SQLPreparedStatementProtocol {
+public struct PostgresPreparedStatement<each Parameter: SQLDataTypeProtocol>: SQLParameterizedPreparedStatementProtocol {
     public let name:String
     public let prepareSQL:String
 
@@ -27,17 +27,35 @@ extension PostgresPreparedStatement {
 
 // MARK: Execute
 extension PostgresPreparedStatement {
+    /*
+    public func execute<each Parameter, T: SQLConnectionProtocol & ~Copyable>(
+        on connection: borrowing T,
+        parameters: (repeat each Parameter),
+        explain: Bool,
+        analyze: Bool
+    ) async throws -> T.QueryMessage.ConcreteResponse {
+        let sql = (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)("
+        var valueString = ""
+        for param in repeat each parameters {
+            valueString += "\(param), "
+        }
+        if !valueString.isEmpty {
+            valueString.removeLast(2)
+        }
+        return try await connection.query(unsafeSQL: sql + valueString + ");")
+    }*/
+
     @inlinable
     public func execute<T: PostgresConnectionProtocol & ~Copyable>(
         on connection: borrowing T,
-        values: (repeat each Value),
+        parameters: (repeat each Parameter),
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> T.QueryMessage.ConcreteResponse {
         let sql = (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)("
         var valueString = ""
-        for value in repeat each values {
-            valueString += "\(value), "
+        for param in repeat each parameters {
+            valueString += "\(param), "
         }
         if !valueString.isEmpty {
             valueString.removeLast(2)
