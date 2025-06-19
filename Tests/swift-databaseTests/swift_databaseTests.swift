@@ -30,11 +30,29 @@ func example() async throws {
         ModelRevision(
             version: (0, 0, 1),
             addedFields: [
-                "id": "UInt64",
-                "created": "Date",
-                "deleted": "Date",
-                "email": "String",
-                "password": "String"
+                .init(
+                    name: "id",
+                    constraints: [.primaryKey],
+                    postgresDataType: .bigserial
+                ),
+                .init(
+                    name: "created",
+                    constraints: [],
+                    postgresDataType: .date
+                ),
+                .init(
+                    name: "deleted",
+                    constraints: [],
+                    postgresDataType: .date
+                ),
+                .init(
+                    name: "email",
+                    postgresDataType: .characterVarying(count: 255)
+                ),
+                .init(
+                    name: "password",
+                    postgresDataType: .characterVarying(count: 255)
+                )
             ]
         )
     ]

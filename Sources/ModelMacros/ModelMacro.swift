@@ -24,7 +24,7 @@ extension ModelMacro: ExtensionMacro {
         var schema = ""
         var alias:String? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
-        var revisions = [CompiledModelRevision]()
+        var revisions = [ModelRevision]()
         var members = [String]()
         for arg in args {
             if let child = arg.as(LabeledExprSyntax.self) {
@@ -42,7 +42,7 @@ extension ModelMacro: ExtensionMacro {
                 case "alias":
                     alias = child.expression.stringLiteral?.text
                 case "revisions":
-                    revisions = child.expression.array?.elements.compactMap({ CompiledModelRevision.parse(expr: $0.expression) }) ?? []
+                    revisions = child.expression.array?.elements.compactMap({ ModelRevision.parse(expr: $0.expression) }) ?? []
                 case "selectFilters":
                     if let array = child.expression.array?.elements {
                         for element in array {
@@ -73,20 +73,20 @@ extension ModelMacro: ExtensionMacro {
         members.append("@inlinable public static var schema: String { \"\(schema)\" }")
         members.append("@inlinable public static var alias: String? { \(alias == nil ? "nil" : "\"\(alias!)\"") }")
 
-        var latestFields = [(name: String, dataType: String)]()
+        var latestFields = [ModelRevision.Field]()
         var latestFieldKeys = Set<String>()
         for revision in revisions {
-            for (field, dataType) in revision.addedFields {
-                if !latestFieldKeys.contains(field) {
-                    latestFields.append((field, dataType))
+            for field in revision.addedFields {
+                if !latestFieldKeys.contains(field.name) {
+                    latestFields.append(field)
                 }
-                latestFieldKeys.insert(field)
+                latestFieldKeys.insert(field.name)
             }
-            for (field, newDataType) in revision.updatedFields {
-                if latestFieldKeys.contains(field), let index = latestFields.firstIndex(where: { $0.name == field }) {
-                    latestFields[index].dataType = newDataType
+            for field in revision.updatedFields {
+                if latestFieldKeys.contains(field.name), let index = latestFields.firstIndex(where: { $0.name == field.name }) {
+                    latestFields[index].postgresDataType = field.postgresDataType
                 } else {
-                    // show compiler diagnostic
+                    // TODO: show compiler diagnostic
                 }
             }
             for field in revision.removedFields {
@@ -99,7 +99,7 @@ extension ModelMacro: ExtensionMacro {
             }
         }
         members.append(preparedStatements(structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, selectFilters: selectFilters, fields: latestFields))
-        members.append(migrations(structureName: structureName, schema: schema, revisions: revisions))
+        members.append(migrations(structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, revisions: revisions))
         members.append(compileSafety(structureName: structureName, fields: latestFields))
         let content = members.map({ .init(stringLiteral: "    " + $0 + "\n") }).joined()
         return try [
@@ -115,7 +115,7 @@ extension ModelMacro {
         supportedDatabases: Set<DatabaseType>,
         schema: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
-        fields: [(name: String, dataType: String)]
+        fields: [ModelRevision.Field]
     ) -> String {
         let latestFieldNames = fields.map { $0.name }
         let latestFieldNamesJoined = latestFieldNames.joined(separator: ", ")
@@ -128,10 +128,10 @@ extension ModelMacro {
 
         for (selectFields, condition) in selectFilters {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
-            var selectFieldsAndDataTypes = [(name: String, dataType: String)]()
+            var selectFieldsAndDataTypes = [ModelRevision.Field]()
             for field in selectFields {
-                if let (_, dataType) = fields.first(where: { $0.name == field }) {
-                    selectFieldsAndDataTypes.append((field, dataType))
+                if let target = fields.first(where: { $0.name == field }) {
+                    selectFieldsAndDataTypes.append(target)
                 } else {
                     continue
                 }
@@ -153,19 +153,26 @@ extension ModelMacro {
         schema: String
     ) -> String {
         let name = schema + "_" + statement.name.lowercased()
-        let parameterDataTypes = statement.parameters.map { $0.dataType }
-        let parameterDataTypesJoined = parameterDataTypes.joined(separator: ", ")
+        // explicit [String] is required due to compiler being unable to infer ElementOfResult
+        var parameterSwiftDataTypes = [String]()
+        var parameterPostgresDataTypes = [String]()
+        for param in statement.parameters {
+            if let dataType = param.postgresDataType {
+                parameterSwiftDataTypes.append(dataType.swiftDataType)
+                parameterPostgresDataTypes.append(dataType.name)
+            }
+        }
         let subtype:String
         let genericParameters:String
-        if parameterDataTypesJoined.isEmpty {
+        if parameterSwiftDataTypes.isEmpty {
             subtype = "Parameterless"
             genericParameters = ""
         } else {
             subtype = ""
-            genericParameters = "<" + parameterDataTypesJoined + ">"
+            genericParameters = "<" + parameterSwiftDataTypes.joined(separator: ", ") + ">"
         }
         var postgresPreparedStatement = "Postgres\(subtype)PreparedStatement\(genericParameters)"
-        let sql = "PREPARE \(name)" + (statement.parameters.isEmpty ? "" : "(\(parameterDataTypesJoined))") + " AS \(statement.sql)"
+        let sql = "PREPARE \(name)" + (parameterSwiftDataTypes.isEmpty ? "" : "(\(parameterPostgresDataTypes.joined(separator: ", ")))") + " AS \(statement.sql)"
         postgresPreparedStatement += "(name: \"\(name)\", sql: \"\(sql)\")"
         return "\n        public static let postgreSQL\(statement.name) = \(postgresPreparedStatement)"
     }
@@ -175,8 +182,9 @@ extension ModelMacro {
 extension ModelMacro {
     static func migrations(
         structureName: String,
+        supportedDatabases: Set<DatabaseType>,
         schema: String,
-        revisions: [CompiledModelRevision]
+        revisions: [ModelRevision]
     ) -> String {
         var migrations = [(name: String?, version: (Int, Int, Int), sql: String)]()
         var migrationsString = "public enum Migrations {\n"
@@ -184,8 +192,18 @@ extension ModelMacro {
         if !revisions.isEmpty {
             var sortedRevisions = revisions.sorted(by: { $0.version < $1.version })
             let initialRevision = sortedRevisions.removeFirst()
-            let createTableSQL = "CREATE TABLE IF NOT EXIST " + schema + " (" + initialRevision.addedFields.map({ $0.name + " " + $0.dataType + " NOT NULL" }).joined(separator: ", ") + ");"
-            migrations.append(("create", initialRevision.version, createTableSQL))
+            if supportedDatabases.contains(.postgreSQL) {
+                let addedFieldsString:String = initialRevision.addedFields.compactMap({
+                    guard let dataType = $0.postgresDataType?.name else {
+                        // TODO: show compiler diagnostic
+                        return nil
+                    }
+                    let constraintsString = $0.constraints.map({ $0.name }).joined(separator: " ")
+                    return $0.name + " " + dataType + (constraintsString.isEmpty ? "" : " " + constraintsString)
+                }).joined(separator: ", ")
+                let createTableSQL = "CREATE TABLE IF NOT EXISTS " + schema + " (" + addedFieldsString + ");"
+                migrations.append(("postgresCreate", initialRevision.version, createTableSQL))
+            }
 
             for revision in sortedRevisions {
             }
@@ -201,10 +219,10 @@ extension ModelMacro {
 
 // MARK: Compile safety
 extension ModelMacro {
-    static func compileSafety(structureName: String, fields: [(name: String, dataType: String)]) -> String {
+    static func compileSafety(structureName: String, fields: [ModelRevision.Field]) -> String {
         var safetyString = "enum Safety {"
-        for (field, _) in fields {
-            safetyString += "\n        var \(field): AnyKeyPath { \\\(structureName).\(field) }"
+        for field in fields {
+            safetyString += "\n        var \(field.name): AnyKeyPath { \\\(structureName).\(field.name) }"
         }
         safetyString += "\n    }"
         return safetyString
@@ -215,8 +233,8 @@ extension ModelMacro {
 extension ModelMacro {
     struct PreparedStatement: Sendable {
         let name:String
-        let parameters:[(name: String, dataType: String)]
-        let returningFields:[(name: String, dataType: String)]
+        let parameters:[ModelRevision.Field]
+        let returningFields:[ModelRevision.Field]
         let sql:String
     }
 }
@@ -299,17 +317,8 @@ extension ModelCondition.Value {
     }
 }
 
-extension ModelMacro {
-    struct CompiledModelRevision {
-        let version:(major: Int, minor: Int, patch: Int)
-        let addedFields:[(name: String, dataType: String)]
-        let updatedFields:[(name: String, newDataType: String)]
-        let removedFields:Set<String>
-    }
-}
-
 // MARK: Parse model revision
-extension ModelMacro.CompiledModelRevision {
+extension ModelRevision {
     static func parse(expr: ExprSyntax) -> Self? {
         guard let functionCall = expr.functionCall,
                 (functionCall.calledExpression.declReference?.baseName.text == "ModelRevision"
@@ -318,8 +327,8 @@ extension ModelMacro.CompiledModelRevision {
             return nil
         }
         var version:(major: Int, minor: Int, patch: Int) = (0, 0, 0)
-        var addedFields = [(String, String)]()
-        var updatedFields = [(String, String)]()
+        var addedFields = [ModelRevision.Field]()
+        var updatedFields = [ModelRevision.Field]()
         var removedFields = Set<String>()
         for argument in functionCall.arguments {
             switch argument.label?.text {
@@ -347,19 +356,73 @@ extension ModelMacro.CompiledModelRevision {
         }
         return Self(version: version, addedFields: addedFields, updatedFields: updatedFields, removedFields: removedFields)
     }
-    private static func parseDictionaryString(expr: ExprSyntax) -> [(name: String, dataType: String)] {
-        guard let content = expr.dictionary?.content else { return [] }
-        var dic = [(name: String, dataType: String)]()
-        switch content {
-        case .elements(let elements):
-            for element in elements {
-                if let key = element.key.stringLiteral?.text, let value = element.value.stringLiteral?.text {
-                    dic.append((key, value))
-                }
+    private static func parseDictionaryString(expr: ExprSyntax) -> [ModelRevision.Field] {
+        guard let array = expr.array?.elements else { return [] }
+        var fields = [ModelRevision.Field]()
+        for element in array {
+            if let field = ModelRevision.Field.parse(expr: element.expression) {
+                fields.append(field)
             }
-        default:
-            break
         }
-        return dic
+        return fields
+    }
+}
+
+// MARK: Parse field
+extension ModelRevision.Field {
+    static func parse(expr: ExprSyntax) -> Self? {
+        guard let functionCall = expr.functionCall else { return nil }
+        var name:String? = nil
+        var constraints:[ModelRevision.Field.Constraint] = [.notNull]
+        var postgresDataType:PostgresDataType? = nil
+        for arg in functionCall.arguments {
+            switch arg.label?.text {
+            case "name":
+                name = arg.expression.stringLiteral?.text
+            case "constraints":
+                if let array = arg.expression.array?.elements {
+                    constraints = array.compactMap({ ModelRevision.Field.Constraint.parse(expr: $0.expression) })
+                } else {
+                    constraints = []
+                }
+                break
+            case "postgresDataType":
+                if let s = arg.expression.memberAccess?.declName.baseName.text {
+                    postgresDataType = .init(rawValue: s)
+                } else if var s = arg.expression.functionCall?.description {
+                    s.removeFirst()
+                    postgresDataType = .init(rawValue: s)
+                }
+            default:
+                break
+            }
+        }
+        if let name {
+            return .init(name: name, constraints: constraints, postgresDataType: postgresDataType)
+        }
+        return nil
+    }
+}
+
+// MARK: Parse field constraint
+extension ModelRevision.Field.Constraint {
+    static func parse(expr: ExprSyntax) -> Self? {
+        guard let member = expr.memberAccess else { return nil }
+        switch member.declName.baseName.text {
+        case "notNull":
+            return .notNull
+        case "check":
+            return nil // TODO: fix
+        case "unique":
+            return .unique
+        case "nullsNotDistinct":
+            return .nullsNotDistinct
+        case "primaryKey":
+            return .primaryKey
+        case "references":
+            return nil // TODO: fix
+        default:
+            return nil
+        }
     }
 }

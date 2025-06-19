@@ -1,4 +1,5 @@
 
+import ModelUtilities
 import PostgreSQLBlueprint
 
 public struct PostgresCommand: PostgresCommandProtocol {
