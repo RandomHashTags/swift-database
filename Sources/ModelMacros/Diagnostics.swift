@@ -1,5 +1,6 @@
 
 import SwiftDiagnostics
+import SwiftSyntax
 
 // MARK: DiagnosticMsg
 struct DiagnosticMsg: DiagnosticMessage {
@@ -16,6 +17,15 @@ struct DiagnosticMsg: DiagnosticMessage {
 extension DiagnosticMsg: FixItMessage {
     var fixItID: MessageID { diagnosticID }
 }
+
+// MARK: General
+extension DiagnosticMsg {
+    static func expectedStringLiteral(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteral", message: "Expected string literal"))
+    }
+}
+
+// MARK: Models
 
 extension DiagnosticMsg {
     static func failedToParseModelCondition() -> DiagnosticMsg {
@@ -39,8 +49,8 @@ extension DiagnosticMsg {
     static func notNullFieldMissingDefaultValue() -> DiagnosticMsg {
         DiagnosticMsg(id: "notNullFieldMissingDefaultValue", message: "Field with constraint '.notNull' is missing a default value")
     }
-    static func fieldAlreadyExists(name: String) -> DiagnosticMsg {
-        DiagnosticMsg(id: "fieldAlreadyExists", message: "Field with name '\(name)' already exists at this point")
+    static func fieldAlreadyExists() -> DiagnosticMsg {
+        DiagnosticMsg(id: "fieldAlreadyExists", message: "Field already exists at this point")
     }
 }
 

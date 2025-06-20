@@ -12,10 +12,9 @@ extension ModelMacro {
     ) -> String {
         var migrationsString = ""
         if !revisions.isEmpty {
-            let sortedRevisions = revisions.sorted(by: { $0.version < $1.version })
             if supportedDatabases.contains(.postgreSQL) {
                 migrationsString += "public enum PostgresMigrations {\n"
-                migrationsString += postgresMigrations(context: context, schema: schema, revisions: sortedRevisions)
+                migrationsString += postgresMigrations(context: context, schema: schema, revisions: revisions)
                 migrationsString += "\n    }"
             }
         }

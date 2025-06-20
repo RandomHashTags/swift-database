@@ -20,6 +20,12 @@ extension Bool: SQLDataTypeProtocol {}
 extension String: SQLDataTypeProtocol {}
 extension Substring: SQLDataTypeProtocol {}
 
+extension Optional: SQLDataTypeProtocol, @retroactive CustomStringConvertible {
+    public var description: String {
+        "" // TODO: fix!
+    }
+}
+
 extension Int: SQLDataTypeProtocol {}
 extension Int8: SQLDataTypeProtocol {}
 extension Int16: SQLDataTypeProtocol {}

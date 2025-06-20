@@ -3,7 +3,9 @@ import Logging
 import PostgreSQLBlueprint
 import SQLBlueprint
 
-public struct PostgresTransaction: SQLTransaction, ~Copyable {
+public struct PostgresTransaction: PostgresTransactionProtocol, ~Copyable {
+    public typealias Connection = PostgresConnection
+
     @usableFromInline
     let connection:PostgresConnection
 

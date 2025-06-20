@@ -38,7 +38,7 @@ extension ModelMacro {
             .init(name: "selectAll", parameters: [], returningFields: fields, sql: selectAllSQL)
         ]
         preparedStatements.append(.init(
-            name: "selectWithLimitAndOffset",
+            name: "selectAllWithLimitAndOffset",
             parameters: [
                 .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), name: "limit", postgresDataType: .integer),
                 .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), name: "offset", postgresDataType: .integer)
@@ -46,6 +46,17 @@ extension ModelMacro {
             returningFields: fields,
             sql: selectWithLimitAndOffsetSQL
         ))
+        for field in fields {
+            let sql = "SELECT \(latestFieldNamesJoined) FROM \(schema) WHERE \(field.name) = $1;"
+            let name = field.name[field.name.startIndex].uppercased() + field.name[field.name.index(after: field.name.startIndex)...]
+            preparedStatements.append(.init(
+                name: "selectAllWhere\(name)Equals",
+                parameters: [
+                    .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), name: field.name, postgresDataType: field.postgresDataType)
+                ],
+                returningFields: fields, sql: sql
+            ))
+        }
 
         for (selectFields, condition) in selectFilters {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
@@ -77,7 +88,8 @@ extension ModelMacro {
         var parameterPostgresDataTypes = [String]()
         for param in statement.parameters {
             if let dataType = param.postgresDataType {
-                parameterSwiftDataTypes.append(dataType.swiftDataType)
+                let isRequired = param.isRequired
+                parameterSwiftDataTypes.append(dataType.swiftDataType + (isRequired ? "" : "?"))
                 parameterPostgresDataTypes.append(dataType.name)
             }
         }

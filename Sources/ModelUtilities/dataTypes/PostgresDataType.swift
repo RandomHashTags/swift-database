@@ -521,9 +521,9 @@ extension PostgresDataType {
 
         case .bytea: "[UInt8]" // TODO: fix?
 
-        case .timestampNoTimeZone, .timestampWithTimeZone: "String" // TODO: fix
-        case .date: "Date"
-        case .timeNoTimeZone, .timeWithTimeZone: "String" // TODO: fix
+        case .timestampNoTimeZone, .timestampWithTimeZone: "Date" // TODO: fix?
+        case .date: "Date" // TODO: fix
+        case .timeNoTimeZone, .timeWithTimeZone: "Date" // TODO: fix
 
         case .boolean: "Bool"
 

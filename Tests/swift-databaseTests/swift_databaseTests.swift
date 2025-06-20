@@ -10,6 +10,7 @@ import Model
 import ModelUtilities
 import PostgreSQL
 import PostgreSQLBlueprint
+import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 @Test
@@ -37,13 +38,12 @@ func example() async throws {
                 ),
                 .init(
                     name: "created",
-                    constraints: [],
-                    postgresDataType: .date
+                    postgresDataType: .timestampWithTimeZone(precision: 0)
                 ),
                 .init(
                     name: "deleted",
                     constraints: [],
-                    postgresDataType: .date
+                    postgresDataType: .timestampWithTimeZone(precision: 0)
                 ),
                 .init(
                     name: "email",
@@ -69,11 +69,11 @@ func example() async throws {
     ]
 )
 struct UserAccount: Model {
-    typealias IDValue = UInt64
+    typealias IDValue = Int64
 
     var id:IDValue?
 
-    var created:Date?
+    var created:Date
     var deleted:Date?
 
     var email:String

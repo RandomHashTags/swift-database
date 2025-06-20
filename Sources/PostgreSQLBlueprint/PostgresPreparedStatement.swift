@@ -46,20 +46,47 @@ extension PostgresPreparedStatement {
     }*/
 
     @inlinable
+    func parameterSQL(_ parameters: (repeat each Parameter)) -> String {
+        var valueString = ""
+        var added = false
+        for param in repeat each parameters {
+            valueString += "\(param), "
+            added = true
+        }
+        if added {
+            valueString.removeLast(2)
+        }
+        return valueString
+    }
+
+    @inlinable
+    func executionSQL(
+        parameters: (repeat each Parameter),
+        explain: Bool,
+        analyze: Bool
+    ) -> String {
+        var sql = (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)("
+        sql += parameterSQL((repeat each parameters))
+        return sql + ");"
+    }
+
+    @inlinable
     public func execute<T: PostgresConnectionProtocol & ~Copyable>(
         on connection: borrowing T,
         parameters: (repeat each Parameter),
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> T.QueryMessage.ConcreteResponse {
-        let sql = (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)("
-        var valueString = ""
-        for param in repeat each parameters {
-            valueString += "\(param), "
-        }
-        if !valueString.isEmpty {
-            valueString.removeLast(2)
-        }
-        return try await connection.query(unsafeSQL: sql + valueString + ");")
+        return try await connection.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze))
+    }
+
+    @inlinable
+    public func execute<T: PostgresTransactionProtocol & ~Copyable>(
+        on transaction: borrowing T,
+        parameters: (repeat each Parameter),
+        explain: Bool = false,
+        analyze: Bool = false
+    ) async throws -> T.Connection.QueryMessage.ConcreteResponse {
+        return try await transaction.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze))
     }
 }
