@@ -1,13 +1,17 @@
 
 import ModelUtilities
+import SwiftDiagnostics
+import SwiftSyntax
+import SwiftSyntaxMacros
 
 extension ModelMacro {
     static func preparedStatements(
+        context: some MacroExpansionContext,
         structureName: String,
         supportedDatabases: Set<DatabaseType>,
         schema: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
-        fields: [ModelRevision.Field]
+        fields: [ModelRevision.Field.Compiled]
     ) -> String {
         var string = ""
         if supportedDatabases.contains(.postgreSQL) {
@@ -22,7 +26,7 @@ extension ModelMacro {
     private static func postgresPreparedStatements(
         schema: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
-        fields: [ModelRevision.Field]
+        fields: [ModelRevision.Field.Compiled]
     ) -> String {
         let latestFieldNames = fields.map { $0.name }
         let latestFieldNamesJoined = latestFieldNames.joined(separator: ", ")
@@ -36,8 +40,8 @@ extension ModelMacro {
         preparedStatements.append(.init(
             name: "selectWithLimitAndOffset",
             parameters: [
-                .init(name: "limit", postgresDataType: .integer),
-                .init(name: "offset", postgresDataType: .integer)
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), name: "limit", postgresDataType: .integer),
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), name: "offset", postgresDataType: .integer)
             ],
             returningFields: fields,
             sql: selectWithLimitAndOffsetSQL
@@ -45,7 +49,7 @@ extension ModelMacro {
 
         for (selectFields, condition) in selectFilters {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
-            var selectFieldsAndDataTypes = [ModelRevision.Field]()
+            var selectFieldsAndDataTypes = [ModelRevision.Field.Compiled]()
             for field in selectFields {
                 if let target = fields.first(where: { $0.name == field }) {
                     selectFieldsAndDataTypes.append(target)

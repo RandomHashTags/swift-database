@@ -53,15 +53,12 @@ func example() async throws {
                     name: "password",
                     postgresDataType: .characterVarying(count: 255)
                 )
-            ]
+            ],
+            removedFields: ["loop"]
         ),
         .init(
             version: (0, 0, 2),
             addedFields: [
-                .init(
-                    name: "test1",
-                    postgresDataType: .boolean
-                ),
                 .init(
                     name: "test2",
                     postgresDataType: .boolean,

@@ -1,13 +1,8 @@
 
 public struct ModelRevision: Sendable {
     public let version:(major: Int, minor: Int, patch: Int)
-
-    /// Dictionary<FieldName, DataType>
     public let addedFields:[Field]
-
-    /// Dictionary<FieldName, DataType>
     public let updatedFields:[Field]
-
     public let removedFields:Set<String>
     
     public init(
@@ -60,6 +55,22 @@ extension ModelRevision {
         ) {
             self.init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: "\(defaultValue)")
         }
+    }
+}
+extension ModelRevision.Field {
+    public static func optional(
+        name: String,
+        postgresDataType: PostgresDataType? = nil,
+        defaultValue: String? = nil
+    ) -> Self {
+        self.init(name: name, constraints: [], postgresDataType: postgresDataType, defaultValue: defaultValue)
+    }
+    public static func required(
+        name: String,
+        postgresDataType: PostgresDataType? = nil,
+        defaultValue: String? = nil
+    ) -> Self {
+        self.init(name: name, constraints: [.notNull], postgresDataType: postgresDataType, defaultValue: defaultValue)
     }
 }
 

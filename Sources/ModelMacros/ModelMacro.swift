@@ -24,7 +24,7 @@ extension ModelMacro: ExtensionMacro {
         var schema = ""
         var alias:String? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
-        var revisions = [ModelRevision]()
+        var revisions = [ModelRevision.Compiled]()
         var members = [String]()
         for arg in args {
             if let child = arg.as(LabeledExprSyntax.self) {
@@ -42,7 +42,7 @@ extension ModelMacro: ExtensionMacro {
                 case "alias":
                     alias = child.expression.stringLiteral?.text
                 case "revisions":
-                    revisions = child.expression.array?.elements.compactMap({ ModelRevision.parse(expr: $0.expression) }) ?? []
+                    revisions = child.expression.array?.elements.compactMap({ ModelRevision.parse(context: context, expr: $0.expression) }) ?? []
                 case "selectFilters":
                     if let array = child.expression.array?.elements {
                         for element in array {
@@ -54,7 +54,7 @@ extension ModelMacro: ExtensionMacro {
                                     case 0:
                                         fields = t.expression.array?.elements.compactMap({ $0.expression.stringLiteral?.text })
                                     case 1:
-                                        condition = ModelCondition.parse(expr: t.expression)
+                                        condition = ModelCondition.parse(context: context, expr: t.expression)
                                     default:
                                         break
                                     }
@@ -74,41 +74,46 @@ extension ModelMacro: ExtensionMacro {
         members.append("@inlinable public static var alias: String? { \(alias == nil ? "nil" : "\"\(alias!)\"") }")
 
         if let initialVersion = revisions.first?.version {
-            var latestFields = [ModelRevision.Field]()
+            var latestFields = [ModelRevision.Field.Compiled]()
             var latestFieldKeys = Set<String>()
             for revision in revisions {
                 let isInitial = revision.version == initialVersion
                 for field in revision.addedFields {
                     if !latestFieldKeys.contains(field.name) {
                         if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
-                            // TODO: show compiler error
+                            context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
                             continue
                         }
                         latestFields.append(field)
                     } else {
-                        // TODO: show compiler diagnostic
+                        context.diagnose(Diagnostic(node: revision.expr, message: DiagnosticMsg.fieldAlreadyExists(name: field.name)))
                         continue
                     }
                     latestFieldKeys.insert(field.name)
                 }
                 for field in revision.updatedFields {
-                    if latestFieldKeys.contains(field.name), let index = latestFields.firstIndex(where: { $0.name == field.name }) {
+                    if let index = latestFields.firstIndex(where: { $0.name == field.name }) {
                         latestFields[index].postgresDataType = field.postgresDataType
                     } else {
-                        // TODO: show compiler diagnostic
+                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldThatDoesntExist()))
                     }
                 }
                 for field in revision.removedFields {
-                    if latestFieldKeys.contains(field), let index = latestFields.firstIndex(where: { $0.name == field }) {
+                    if let index = latestFields.firstIndex(where: { $0.name == field.name }) {
                         latestFields.remove(at: index)
                     } else {
-                        // TODO: show compiler diagnostic
+                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRemoveFieldThatDoesntExist()))
+                        continue
                     }
-                    latestFieldKeys.remove(field)
+                    latestFieldKeys.remove(field.name)
+                }
+                // make sure a primary key exists after applying this revision
+                if latestFields.first(where: { $0.constraints.contains(.primaryKey) }) == nil {
+                    context.diagnose(Diagnostic(node: revision.expr, message: DiagnosticMsg.missingPrimaryKey()))
                 }
             }
-            members.append(preparedStatements(structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, selectFilters: selectFilters, fields: latestFields))
-            members.append(migrations(supportedDatabases: supportedDatabases, schema: schema, revisions: revisions))
+            members.append(preparedStatements(context: context, structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, selectFilters: selectFilters, fields: latestFields))
+            members.append(migrations(context: context, supportedDatabases: supportedDatabases, schema: schema, revisions: revisions))
             members.append(compileSafety(structureName: structureName, fields: latestFields))
         }
         let content = members.map({ .init(stringLiteral: "    " + $0 + "\n") }).joined()
@@ -120,7 +125,10 @@ extension ModelMacro: ExtensionMacro {
 
 // MARK: Compile safety
 extension ModelMacro {
-    static func compileSafety(structureName: String, fields: [ModelRevision.Field]) -> String {
+    static func compileSafety(
+        structureName: String,
+        fields: [ModelRevision.Field.Compiled]
+    ) -> String {
         var safetyString = "enum Safety {"
         for field in fields {
             safetyString += "\n        var \(field.name): AnyKeyPath { \\\(structureName).\(field.name) }"
@@ -134,17 +142,21 @@ extension ModelMacro {
 extension ModelMacro {
     struct PreparedStatement: Sendable {
         let name:String
-        let parameters:[ModelRevision.Field]
-        let returningFields:[ModelRevision.Field]
+        let parameters:[ModelRevision.Field.Compiled]
+        let returningFields:[ModelRevision.Field.Compiled]
         let sql:String
     }
 }
 
 // MARK: Parse model condition
 extension ModelCondition {
-    static func parse(expr: ExprSyntax) -> Self? {
+    static func parse(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> Self? {
         guard let functionCall = expr.functionCall,
                 functionCall.calledExpression.declReference?.baseName.text == "ModelCondition" else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelCondition()))
             return nil
         }
         var name:String? = nil
@@ -155,7 +167,7 @@ extension ModelCondition {
             case "name":
                 name = argument.expression.stringLiteral?.text
             case "firstCondition":
-                firstCondition = ModelCondition.Value.parse(expr: argument.expression)
+                firstCondition = ModelCondition.Value.parse(context: context, expr: argument.expression)
             case "additionalConditions":
                 if let array = argument.expression.array?.elements {
                     for element in array {
@@ -169,7 +181,7 @@ extension ModelCondition {
                                         joiningOperator = .init(rawValue: s)
                                     }
                                 case 1: // condition
-                                    condition = ModelCondition.Value.parse(expr: t.expression)
+                                    condition = ModelCondition.Value.parse(context: context, expr: t.expression)
                                 default:
                                     break
                                 }
@@ -184,16 +196,23 @@ extension ModelCondition {
                 break
             }
         }
-        guard let name, let firstCondition else { return nil }
+        guard let name, let firstCondition else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelCondition()))
+            return nil
+        }
         return ModelCondition(name: name, firstCondition: firstCondition, additionalConditions: additionalConditions)
     }
 }
 extension ModelCondition.Value {
-    static func parse(expr: ExprSyntax) -> Self? {
+    static func parse(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> Self? {
         guard let functionCall = expr.functionCall,
                 (functionCall.calledExpression.declReference?.baseName.text == "Value"
                 || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
         else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelConditionValue()))
             return nil
         }
         var field:String? = nil
@@ -213,24 +232,38 @@ extension ModelCondition.Value {
                 break
             }
         }
-        guard let field, let `operator`, let value else { return nil }
+        guard let field, let `operator`, let value else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelConditionValue()))
+            return nil
+        }
         return Self(field: field, operator: `operator`, value: value)
     }
 }
 
 // MARK: Parse model revision
 extension ModelRevision {
-    static func parse(expr: ExprSyntax) -> Self? {
+    struct Compiled {
+        let expr:ExprSyntax
+        let version:(major: Int, minor: Int, patch: Int)
+        let addedFields:[Field.Compiled]
+        let updatedFields:[Field.Compiled]
+        let removedFields:[(expr: ExprSyntax, name: String)]
+    }
+    static func parse(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> Compiled? {
         guard let functionCall = expr.functionCall,
                 (functionCall.calledExpression.declReference?.baseName.text == "ModelRevision"
                 || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
         else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevision()))
             return nil
         }
         var version:(major: Int, minor: Int, patch: Int) = (0, 0, 0)
-        var addedFields = [ModelRevision.Field]()
-        var updatedFields = [ModelRevision.Field]()
-        var removedFields = Set<String>()
+        var addedFields = [ModelRevision.Field.Compiled]()
+        var updatedFields = [ModelRevision.Field.Compiled]()
+        var removedFields = [(expr: ExprSyntax, name: String)]()
         for argument in functionCall.arguments {
             switch argument.label?.text {
             case "version":
@@ -244,24 +277,30 @@ extension ModelRevision {
                     }
                 }
             case "addedFields":
-                addedFields = parseDictionaryString(expr: argument.expression)
+                addedFields = parseDictionaryString(context: context, expr: argument.expression)
             case "updatedFields":
-                updatedFields = parseDictionaryString(expr: argument.expression)
+                updatedFields = parseDictionaryString(context: context, expr: argument.expression)
             case "removedFields":
-                if let values = argument.expression.array?.elements.compactMap({ $0.expression.stringLiteral?.text }) {
-                    removedFields = Set(values)
+                if let values:[(ExprSyntax, String)] = argument.expression.array?.elements.compactMap({
+                    guard let value = $0.expression.stringLiteral?.text else { return nil }
+                    return ($0.expression, value)
+                }) {
+                    removedFields = values
                 }
             default:
                 break
             }
         }
-        return Self(version: version, addedFields: addedFields, updatedFields: updatedFields, removedFields: removedFields)
+        return .init(expr: expr, version: version, addedFields: addedFields, updatedFields: updatedFields, removedFields: removedFields)
     }
-    private static func parseDictionaryString(expr: ExprSyntax) -> [ModelRevision.Field] {
+    private static func parseDictionaryString(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> [ModelRevision.Field.Compiled] {
         guard let array = expr.array?.elements else { return [] }
-        var fields = [ModelRevision.Field]()
+        var fields = [ModelRevision.Field.Compiled]()
         for element in array {
-            if let field = ModelRevision.Field.parse(expr: element.expression) {
+            if let field = ModelRevision.Field.parse(context: context, expr: element.expression) {
                 fields.append(field)
             }
         }
@@ -271,8 +310,21 @@ extension ModelRevision {
 
 // MARK: Parse field
 extension ModelRevision.Field {
-    static func parse(expr: ExprSyntax) -> Self? {
-        guard let functionCall = expr.functionCall else { return nil }
+    struct Compiled {
+        let expr:ExprSyntax
+        let name:String
+        var constraints:[Constraint] = [.notNull]
+        var postgresDataType:PostgresDataType? = nil
+        var defaultValue:String? = nil
+    }
+    static func parse(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> Compiled? {
+        guard let functionCall = expr.functionCall else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionField()))
+            return nil
+        }
         var name:String? = nil
         var constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
@@ -283,11 +335,12 @@ extension ModelRevision.Field {
                 name = arg.expression.stringLiteral?.text
             case "constraints":
                 if let array = arg.expression.array?.elements {
-                    constraints = array.compactMap({ ModelRevision.Field.Constraint.parse(expr: $0.expression) })
+                    constraints = array.compactMap({
+                        .parse(context: context, expr: $0.expression)
+                    })
                 } else {
                     constraints = []
                 }
-                break
             case "postgresDataType":
                 if let s = arg.expression.memberAccess?.declName.baseName.text {
                     postgresDataType = .init(rawValue: s)
@@ -301,17 +354,24 @@ extension ModelRevision.Field {
                 break
             }
         }
-        if let name {
-            return .init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue)
+        guard let name else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionField()))
+            return nil
         }
-        return nil
+        return .init(expr: expr, name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue)
     }
 }
 
 // MARK: Parse field constraint
 extension ModelRevision.Field.Constraint {
-    static func parse(expr: ExprSyntax) -> Self? {
-        guard let member = expr.memberAccess else { return nil }
+    static func parse(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> Self? {
+        guard let member = expr.memberAccess else {
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))
+            return nil
+        }
         switch member.declName.baseName.text {
         case "notNull":
             return .notNull
