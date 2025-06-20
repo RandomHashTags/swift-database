@@ -20,15 +20,28 @@ import SwiftDatabaseBlueprint
 public struct PostgresConnection: PostgresConnectionProtocol {
     public typealias QueryMessage = PostgresQueryMessage
 
-    public var fileDescriptor:Int32
-    public var logger:Logger
+    @usableFromInline
+    var _fileDescriptor:Int32
+
+    @usableFromInline
+    var _logger:Logger
 
     @usableFromInline
     var backendKeyData:PostgresBackendKeyDataMessage?
 
     public init() {
-        fileDescriptor = -1
-        logger = Logger(label: "database.swift.postgresDisconnectedFileDescriptor")
+        _fileDescriptor = -1
+        _logger = Logger(label: "database.swift.postgresDisconnectedFileDescriptor")
+    }
+
+    @inlinable
+    public var fileDescriptor: Int32 {
+        _fileDescriptor
+    }
+
+    @inlinable
+    public var logger: Logger {
+        _logger
     }
 }
 
@@ -49,7 +62,7 @@ extension PostgresConnection {
         guard fileDescriptor == -1 else {
             throw PostgresError.connectionAlreadyEstablished()
         }
-        fileDescriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
+        _fileDescriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
         guard fileDescriptor >= 0 else {
             throw PostgresError.socketFailure("errno=\(errno)")
         }
@@ -70,7 +83,7 @@ extension PostgresConnection {
         guard connectResult == 0 else {
             throw PostgresError.connectionFailure("errno=\(errno)")
         }
-        logger = Logger(label: "database.swift.postgresFileDescriptor\(fileDescriptor)")
+        _logger = Logger(label: "database.swift.postgresFileDescriptor\(fileDescriptor)")
     }
 }
 

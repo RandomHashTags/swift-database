@@ -1,7 +1,8 @@
 
 extension PostgresSQLBuilder {
     public struct TableExpression: PostgresSQLBuilderComponent {
-        public var sql:String
+        @usableFromInline
+        var _sql:String
 
         @inlinable
         init(
@@ -20,7 +21,12 @@ extension PostgresSQLBuilder {
             if let having {
                 sql += " HAVING " + having
             }
-            self.sql = sql
+            self._sql = sql
+        }
+
+        @inlinable
+        public var sql: String {
+            _sql
         }
     }
 }

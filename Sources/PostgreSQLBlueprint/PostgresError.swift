@@ -34,6 +34,11 @@ extension PostgresError {
     @inlinable public static func socketFailure(_ reason: String = "") -> PostgresError { PostgresError(identifier: "socketFailure", reason: reason) }
 }
 
+// MARK: Transaction error
+extension PostgresError {
+    @inlinable public static func transactionError(_ reason: String = "") -> PostgresError { PostgresError(identifier: "transactionError", reason: reason) }
+}
+
 
 
 

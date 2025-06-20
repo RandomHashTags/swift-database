@@ -29,15 +29,18 @@ extension ModelRevision {
         public let name:String
         public let constraints:[Constraint]
         public package(set) var postgresDataType:PostgresDataType?
+        public let defaultValue:String?
 
         public init(
             name: String,
             constraints: [Constraint] = [.notNull],
-            postgresDataType: PostgresDataType? = nil
+            postgresDataType: PostgresDataType? = nil,
+            defaultValue: String? = nil
         ) {
             self.name = name
             self.constraints = constraints
             self.postgresDataType = postgresDataType
+            self.defaultValue = defaultValue
         }
     }
 }

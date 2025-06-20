@@ -121,10 +121,20 @@ extension ModelMacro {
         let latestFieldNamesJoined = latestFieldNames.joined(separator: ", ")
         let insertSQL = "INSERT INTO \(schema) (\(latestFieldNamesJoined)) VALUES (\(fields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")));"
         let selectAllSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema);"
+        let selectWithLimitAndOffsetSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema) LIMIT $1 OFFSET $2;"
         var preparedStatements = [
             PreparedStatement(name: "Insert", parameters: fields, returningFields: [], sql: insertSQL),
             .init(name: "SelectAll", parameters: [], returningFields: fields, sql: selectAllSQL)
         ]
+        preparedStatements.append(.init(
+            name: "SelectWithLimitAndOffset",
+            parameters: [
+                .init(name: "limit", postgresDataType: .integer),
+                .init(name: "offset", postgresDataType: .integer)
+            ],
+            returningFields: fields,
+            sql: selectWithLimitAndOffsetSQL
+        ))
 
         for (selectFields, condition) in selectFilters {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
@@ -153,7 +163,6 @@ extension ModelMacro {
         schema: String
     ) -> String {
         let name = schema + "_" + statement.name.lowercased()
-        // explicit [String] is required due to compiler being unable to infer ElementOfResult
         var parameterSwiftDataTypes = [String]()
         var parameterPostgresDataTypes = [String]()
         for param in statement.parameters {
@@ -375,6 +384,7 @@ extension ModelRevision.Field {
         var name:String? = nil
         var constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
+        var defaultValue:String? = nil
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
@@ -393,12 +403,14 @@ extension ModelRevision.Field {
                     s.removeFirst()
                     postgresDataType = .init(rawValue: s)
                 }
+            case "defaultValue":
+                defaultValue = arg.expression.stringLiteral?.text
             default:
                 break
             }
         }
         if let name {
-            return .init(name: name, constraints: constraints, postgresDataType: postgresDataType)
+            return .init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue)
         }
         return nil
     }

@@ -27,7 +27,7 @@ func example() async throws {
         (["id"], ModelCondition(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "PASSWORD")))
     ],
     revisions: [
-        ModelRevision(
+        .init(
             version: (0, 0, 1),
             addedFields: [
                 .init(
