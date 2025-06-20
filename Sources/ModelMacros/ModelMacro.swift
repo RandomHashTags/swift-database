@@ -73,156 +73,48 @@ extension ModelMacro: ExtensionMacro {
         members.append("@inlinable public static var schema: String { \"\(schema)\" }")
         members.append("@inlinable public static var alias: String? { \(alias == nil ? "nil" : "\"\(alias!)\"") }")
 
-        var latestFields = [ModelRevision.Field]()
-        var latestFieldKeys = Set<String>()
-        for revision in revisions {
-            for field in revision.addedFields {
-                if !latestFieldKeys.contains(field.name) {
-                    latestFields.append(field)
+        if let initialVersion = revisions.first?.version {
+            var latestFields = [ModelRevision.Field]()
+            var latestFieldKeys = Set<String>()
+            for revision in revisions {
+                let isInitial = revision.version == initialVersion
+                for field in revision.addedFields {
+                    if !latestFieldKeys.contains(field.name) {
+                        if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
+                            // TODO: show compiler error
+                            continue
+                        }
+                        latestFields.append(field)
+                    } else {
+                        // TODO: show compiler diagnostic
+                        continue
+                    }
+                    latestFieldKeys.insert(field.name)
                 }
-                latestFieldKeys.insert(field.name)
-            }
-            for field in revision.updatedFields {
-                if latestFieldKeys.contains(field.name), let index = latestFields.firstIndex(where: { $0.name == field.name }) {
-                    latestFields[index].postgresDataType = field.postgresDataType
-                } else {
-                    // TODO: show compiler diagnostic
+                for field in revision.updatedFields {
+                    if latestFieldKeys.contains(field.name), let index = latestFields.firstIndex(where: { $0.name == field.name }) {
+                        latestFields[index].postgresDataType = field.postgresDataType
+                    } else {
+                        // TODO: show compiler diagnostic
+                    }
+                }
+                for field in revision.removedFields {
+                    if latestFieldKeys.contains(field), let index = latestFields.firstIndex(where: { $0.name == field }) {
+                        latestFields.remove(at: index)
+                    } else {
+                        // TODO: show compiler diagnostic
+                    }
+                    latestFieldKeys.remove(field)
                 }
             }
-            for field in revision.removedFields {
-                if latestFieldKeys.contains(field), let index = latestFields.firstIndex(where: { $0.name == field }) {
-                    latestFields.remove(at: index)
-                } else {
-                    // TODO: show compiler diagnostic
-                }
-                latestFieldKeys.remove(field)
-            }
+            members.append(preparedStatements(structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, selectFilters: selectFilters, fields: latestFields))
+            members.append(migrations(supportedDatabases: supportedDatabases, schema: schema, revisions: revisions))
+            members.append(compileSafety(structureName: structureName, fields: latestFields))
         }
-        members.append(preparedStatements(structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, selectFilters: selectFilters, fields: latestFields))
-        members.append(migrations(structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, revisions: revisions))
-        members.append(compileSafety(structureName: structureName, fields: latestFields))
         let content = members.map({ .init(stringLiteral: "    " + $0 + "\n") }).joined()
         return try [
             .init(.init(stringLiteral: "extension \(structureName) {\n\(content)\n}"))
         ]
-    }
-}
-
-// MARK: Prepared statements
-extension ModelMacro {
-    static func preparedStatements(
-        structureName: String,
-        supportedDatabases: Set<DatabaseType>,
-        schema: String,
-        selectFilters: [(fields: [String], condition: ModelCondition)],
-        fields: [ModelRevision.Field]
-    ) -> String {
-        let latestFieldNames = fields.map { $0.name }
-        let latestFieldNamesJoined = latestFieldNames.joined(separator: ", ")
-        let insertSQL = "INSERT INTO \(schema) (\(latestFieldNamesJoined)) VALUES (\(fields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")));"
-        let selectAllSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema);"
-        let selectWithLimitAndOffsetSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema) LIMIT $1 OFFSET $2;"
-        var preparedStatements = [
-            PreparedStatement(name: "Insert", parameters: fields, returningFields: [], sql: insertSQL),
-            .init(name: "SelectAll", parameters: [], returningFields: fields, sql: selectAllSQL)
-        ]
-        preparedStatements.append(.init(
-            name: "SelectWithLimitAndOffset",
-            parameters: [
-                .init(name: "limit", postgresDataType: .integer),
-                .init(name: "offset", postgresDataType: .integer)
-            ],
-            returningFields: fields,
-            sql: selectWithLimitAndOffsetSQL
-        ))
-
-        for (selectFields, condition) in selectFilters {
-            let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
-            var selectFieldsAndDataTypes = [ModelRevision.Field]()
-            for field in selectFields {
-                if let target = fields.first(where: { $0.name == field }) {
-                    selectFieldsAndDataTypes.append(target)
-                } else {
-                    continue
-                }
-            }
-            preparedStatements.append(.init(name: "SelectAllWhere_" + condition.name, parameters: [], returningFields: selectFieldsAndDataTypes, sql: sql))
-        }
-
-        var preparedStatementsString = "public enum PreparedStatements {"
-        for statement in preparedStatements {
-            if supportedDatabases.contains(.postgreSQL) {
-                preparedStatementsString += getPostgresPreparedStatement(statement: statement, schema: schema)
-            }
-        }
-        preparedStatementsString += "\n    }"
-        return preparedStatementsString
-    }
-    private static func getPostgresPreparedStatement(
-        statement: PreparedStatement,
-        schema: String
-    ) -> String {
-        let name = schema + "_" + statement.name.lowercased()
-        var parameterSwiftDataTypes = [String]()
-        var parameterPostgresDataTypes = [String]()
-        for param in statement.parameters {
-            if let dataType = param.postgresDataType {
-                parameterSwiftDataTypes.append(dataType.swiftDataType)
-                parameterPostgresDataTypes.append(dataType.name)
-            }
-        }
-        let subtype:String
-        let genericParameters:String
-        if parameterSwiftDataTypes.isEmpty {
-            subtype = "Parameterless"
-            genericParameters = ""
-        } else {
-            subtype = ""
-            genericParameters = "<" + parameterSwiftDataTypes.joined(separator: ", ") + ">"
-        }
-        var postgresPreparedStatement = "Postgres\(subtype)PreparedStatement\(genericParameters)"
-        let sql = "PREPARE \(name)" + (parameterSwiftDataTypes.isEmpty ? "" : "(\(parameterPostgresDataTypes.joined(separator: ", ")))") + " AS \(statement.sql)"
-        postgresPreparedStatement += "(name: \"\(name)\", sql: \"\(sql)\")"
-        return "\n        public static let postgreSQL\(statement.name) = \(postgresPreparedStatement)"
-    }
-}
-
-// MARK: Migrations
-extension ModelMacro {
-    static func migrations(
-        structureName: String,
-        supportedDatabases: Set<DatabaseType>,
-        schema: String,
-        revisions: [ModelRevision]
-    ) -> String {
-        var migrations = [(name: String?, version: (Int, Int, Int), sql: String)]()
-        var migrationsString = "public enum Migrations {\n"
-
-        if !revisions.isEmpty {
-            var sortedRevisions = revisions.sorted(by: { $0.version < $1.version })
-            let initialRevision = sortedRevisions.removeFirst()
-            if supportedDatabases.contains(.postgreSQL) {
-                let addedFieldsString:String = initialRevision.addedFields.compactMap({
-                    guard let dataType = $0.postgresDataType?.name else {
-                        // TODO: show compiler diagnostic
-                        return nil
-                    }
-                    let constraintsString = $0.constraints.map({ $0.name }).joined(separator: " ")
-                    return $0.name + " " + dataType + (constraintsString.isEmpty ? "" : " " + constraintsString)
-                }).joined(separator: ", ")
-                let createTableSQL = "CREATE TABLE IF NOT EXISTS " + schema + " (" + addedFieldsString + ");"
-                migrations.append(("postgresCreate", initialRevision.version, createTableSQL))
-            }
-
-            for revision in sortedRevisions {
-            }
-
-            migrationsString += migrations.map({ (name, version, sql) in
-                return "        @inlinable public static var " + (name ?? "v\(version.0)_\(version.1)_\(version.2)") + ": String { \"" + sql + "\" }"
-            }).joined(separator: "\n")
-        }
-        migrationsString += "\n    }"
-        return migrationsString
     }
 }
 
@@ -404,7 +296,7 @@ extension ModelRevision.Field {
                     postgresDataType = .init(rawValue: s)
                 }
             case "defaultValue":
-                defaultValue = arg.expression.stringLiteral?.text
+                defaultValue = arg.expression.stringLiteral?.text ?? arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text ?? arg.expression.integerLiteral?.literal.text
             default:
                 break
             }

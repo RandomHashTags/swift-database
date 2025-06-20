@@ -54,6 +54,20 @@ func example() async throws {
                     postgresDataType: .characterVarying(count: 255)
                 )
             ]
+        ),
+        .init(
+            version: (0, 0, 2),
+            addedFields: [
+                .init(
+                    name: "test1",
+                    postgresDataType: .boolean
+                ),
+                .init(
+                    name: "test2",
+                    postgresDataType: .boolean,
+                    defaultValue: false
+                )
+            ]
         )
     ]
 )
@@ -67,4 +81,6 @@ struct UserAccount: Model {
 
     var email:String
     var password:String
+
+    var test2:Bool
 }

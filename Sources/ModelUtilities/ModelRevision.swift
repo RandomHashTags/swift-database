@@ -42,12 +42,30 @@ extension ModelRevision {
             self.postgresDataType = postgresDataType
             self.defaultValue = defaultValue
         }
+
+        public init(
+            name: String,
+            constraints: [Constraint] = [.notNull],
+            postgresDataType: PostgresDataType? = nil,
+            defaultValue: Bool
+        ) {
+            self.init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue ? "true" : "false")
+        }
+
+        public init<T: FixedWidthInteger>(
+            name: String,
+            constraints: [Constraint] = [.notNull],
+            postgresDataType: PostgresDataType? = nil,
+            defaultValue: T
+        ) {
+            self.init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: "\(defaultValue)")
+        }
     }
 }
 
 // MARK: Field constraint
 extension ModelRevision.Field {
-    public enum Constraint: Sendable {
+    public enum Constraint: Sendable, Equatable {
         case notNull
         case check(leftFieldName: String, rightFieldName: String)
         case unique

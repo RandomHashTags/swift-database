@@ -1,7 +1,7 @@
 
 import SQLBlueprint
 
-public struct PostgresParameterlessPreparedStatement: SQLParameterlessPreparedStatementProtocol {
+public struct PostgresParameterlessPreparedStatement: SQLParameterlessPreparedStatementProtocol, ~Copyable {
     public let name:String
     public let prepareSQL:String
 
