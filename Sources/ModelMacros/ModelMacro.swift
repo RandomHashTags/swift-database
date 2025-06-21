@@ -342,7 +342,7 @@ extension ModelRevision {
 
 // MARK: Parse field
 extension ModelRevision.Field {
-    struct Compiled {
+    struct Compiled: Equatable {
         let expr:ExprSyntax
         let name:String
         var constraints:[Constraint] = [.notNull]
@@ -351,6 +351,10 @@ extension ModelRevision.Field {
 
         var isRequired: Bool {
             constraints.contains(.primaryKey) || constraints.contains(.notNull)
+        }
+
+        var formattedName: String {
+            name[name.startIndex].uppercased() + name[name.index(after: name.startIndex)...]
         }
     }
     static func parse(

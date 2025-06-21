@@ -13,6 +13,8 @@ public macro Model(
 public protocol Model: AnyModel, ~Copyable {
     associatedtype IDValue: Codable, Sendable
     var id: IDValue? { get set }
+
+    func requireID() throws -> IDValue
 }
 
 extension Model {

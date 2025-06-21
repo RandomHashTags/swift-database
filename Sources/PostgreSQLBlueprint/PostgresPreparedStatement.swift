@@ -1,7 +1,7 @@
 
 import SQLBlueprint
 
-public struct PostgresPreparedStatement<each Parameter: SQLDataTypeProtocol>: SQLParameterizedPreparedStatementProtocol {
+public struct PostgresPreparedStatement<each Parameter: PostgresDataTypeProtocol>: SQLParameterizedPreparedStatementProtocol {
     public let name:String
     public let prepareSQL:String
 
@@ -27,30 +27,12 @@ extension PostgresPreparedStatement {
 
 // MARK: Execute
 extension PostgresPreparedStatement {
-    /*
-    public func execute<each Parameter, T: SQLConnectionProtocol & ~Copyable>(
-        on connection: borrowing T,
-        parameters: (repeat each Parameter),
-        explain: Bool,
-        analyze: Bool
-    ) async throws -> T.QueryMessage.ConcreteResponse {
-        let sql = (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)("
-        var valueString = ""
-        for param in repeat each parameters {
-            valueString += "\(param), "
-        }
-        if !valueString.isEmpty {
-            valueString.removeLast(2)
-        }
-        return try await connection.query(unsafeSQL: sql + valueString + ");")
-    }*/
-
     @inlinable
     func parameterSQL(_ parameters: (repeat each Parameter)) -> String {
         var valueString = ""
         var added = false
         for param in repeat each parameters {
-            valueString += "\(param), "
+            valueString += param.postgresValue + ", "
             added = true
         }
         if added {

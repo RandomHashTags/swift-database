@@ -31,8 +31,9 @@ extension ModelMacro {
         var preparedStatements = [PreparedStatement]()
         let allFieldNamesJoined = fields.map { $0.name }.joined(separator: ", ")
         var insertFields = fields
+        var primaryKeyField:ModelRevision.Field.Compiled! = nil
         if let primaryKeyFieldIndex = insertFields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
-            let primaryKeyField = insertFields[primaryKeyFieldIndex]
+            primaryKeyField = insertFields[primaryKeyFieldIndex]
             if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
                 insertFields.remove(at: primaryKeyFieldIndex)
             }
@@ -40,6 +41,23 @@ extension ModelMacro {
         let insertFieldsJoined = insertFields.map { $0.name }.joined(separator: ", ")
         let insertSQL = "INSERT INTO \(schema) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
         preparedStatements.append(.init(name: "insert", parameters: insertFields, returningFields: [], sql: insertSQL))
+
+        if let primaryKeyField {
+            let updateSQL = "UPDATE \(schema) SET " + insertFields.enumerated().map {
+                $0.element.name + " = $\($0.offset+2)"
+            }.joined(separator: ", ") + " WHERE \(primaryKeyField.name) = $1"
+            preparedStatements.append(.init(name: "update", parameters: fields, returningFields: [], sql: updateSQL))
+            
+            for field in insertFields {
+                if field != primaryKeyField {
+                    let sql = "UPDATE \(schema) SET \(field.name) = $2 WHERE \(primaryKeyField.name) = $1"
+                    preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returningFields: [], sql: sql))
+                }
+            }
+
+            let selectSQL = "SELECT \(allFieldNamesJoined) FROM \(schema) WHERE \(primaryKeyField.name) = $1"
+            preparedStatements.append(.init(name: "select", parameters: [primaryKeyField], returningFields: fields, sql: selectSQL))
+        }
         
         let selectAllSQL = "SELECT \(allFieldNamesJoined) FROM \(schema)"
         preparedStatements.append(.init(name: "selectAll", parameters: [], returningFields: fields, sql: selectAllSQL))
@@ -56,7 +74,7 @@ extension ModelMacro {
         ))
         for field in fields {
             let sql = "SELECT \(allFieldNamesJoined) FROM \(schema) WHERE \(field.name) = $1"
-            let name = field.name[field.name.startIndex].uppercased() + field.name[field.name.index(after: field.name.startIndex)...]
+            let name = field.formattedName
             preparedStatements.append(.init(
                 name: "selectAllWhere\(name)Equals",
                 parameters: [
