@@ -28,15 +28,23 @@ extension ModelMacro {
         selectFilters: [(fields: [String], condition: ModelCondition)],
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
-        let latestFieldNames = fields.map { $0.name }
-        let latestFieldNamesJoined = latestFieldNames.joined(separator: ", ")
-        let insertSQL = "INSERT INTO \(schema) (\(latestFieldNamesJoined)) VALUES (\(fields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")));"
-        let selectAllSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema);"
-        let selectWithLimitAndOffsetSQL = "SELECT \(latestFieldNamesJoined) FROM \(schema) LIMIT $1 OFFSET $2;"
-        var preparedStatements = [
-            PreparedStatement(name: "insert", parameters: fields, returningFields: [], sql: insertSQL),
-            .init(name: "selectAll", parameters: [], returningFields: fields, sql: selectAllSQL)
-        ]
+        var preparedStatements = [PreparedStatement]()
+        let allFieldNamesJoined = fields.map { $0.name }.joined(separator: ", ")
+        var insertFields = fields
+        if let primaryKeyFieldIndex = insertFields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
+            let primaryKeyField = insertFields[primaryKeyFieldIndex]
+            if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
+                insertFields.remove(at: primaryKeyFieldIndex)
+            }
+        }
+        let insertFieldsJoined = insertFields.map { $0.name }.joined(separator: ", ")
+        let insertSQL = "INSERT INTO \(schema) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
+        preparedStatements.append(.init(name: "insert", parameters: insertFields, returningFields: [], sql: insertSQL))
+        
+        let selectAllSQL = "SELECT \(allFieldNamesJoined) FROM \(schema)"
+        preparedStatements.append(.init(name: "selectAll", parameters: [], returningFields: fields, sql: selectAllSQL))
+
+        let selectWithLimitAndOffsetSQL = "SELECT \(allFieldNamesJoined) FROM \(schema) LIMIT $1 OFFSET $2"
         preparedStatements.append(.init(
             name: "selectAllWithLimitAndOffset",
             parameters: [
@@ -47,7 +55,7 @@ extension ModelMacro {
             sql: selectWithLimitAndOffsetSQL
         ))
         for field in fields {
-            let sql = "SELECT \(latestFieldNamesJoined) FROM \(schema) WHERE \(field.name) = $1;"
+            let sql = "SELECT \(allFieldNamesJoined) FROM \(schema) WHERE \(field.name) = $1"
             let name = field.name[field.name.startIndex].uppercased() + field.name[field.name.index(after: field.name.startIndex)...]
             preparedStatements.append(.init(
                 name: "selectAllWhere\(name)Equals",
@@ -59,7 +67,7 @@ extension ModelMacro {
         }
 
         for (selectFields, condition) in selectFilters {
-            let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql + ";"
+            let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql
             var selectFieldsAndDataTypes = [ModelRevision.Field.Compiled]()
             for field in selectFields {
                 if let target = fields.first(where: { $0.name == field }) {

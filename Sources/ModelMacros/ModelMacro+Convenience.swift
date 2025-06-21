@@ -25,7 +25,7 @@ extension ModelMacro {
         context: some MacroExpansionContext,
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
-        var string = "@inlinable public func create<T: PostgresConnectionProtocol & ~Copyable>(\n"
+        var string = "@discardableResult\n@inlinable\npublic func create<T: PostgresConnectionProtocol & ~Copyable>(\n"
         string += "on connection: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
 
         var validFieldNames = [String]()
@@ -36,11 +36,30 @@ extension ModelMacro {
                 context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
             }
         }
-        if let primaryKeyField = fields.first(where: { $0.constraints.contains(.primaryKey) }) {
-            string += "let \(primaryKeyField.name) = try requireID()"
+        let primaryKeyString:String
+        if let primaryKeyFieldIndex = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
+            let primaryKeyField = fields[primaryKeyFieldIndex]
+            if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
+                primaryKeyString = ""
+                validFieldNames.remove(at: primaryKeyFieldIndex)
+            } else {
+                primaryKeyString = "let \(primaryKeyField.name) = try requireID()\n"
+            }
+        } else {
+            primaryKeyString = ""
         }
-        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: connection,\nparameters: (\(validFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n)\n"
-        string += "return self"
+
+        let parametersJoined = validFieldNames.joined(separator: ", ")
+        string += primaryKeyString
+        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: connection,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n)\n"
+        string += "return self\n"
+        string += "}\n\n"
+
+        string += "@discardableResult\n@inlinable\npublic func create<T: PostgresTransactionProtocol & ~Copyable>(\n"
+        string += "on transaction: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
+        string += primaryKeyString
+        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: transaction,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n)\n"
+        string += "return self\n"
         string += "\n}"
         return string
     }

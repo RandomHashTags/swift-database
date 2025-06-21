@@ -25,7 +25,7 @@ func example() async throws {
     supportedDatabases: [.postgreSQL],
     schema: "users",
     selectFilters: [
-        (["id"], ModelCondition(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "PASSWORD")))
+        (["id"], .init(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "PASSWORD")))
     ],
     revisions: [
         .init(
