@@ -125,7 +125,7 @@ extension ModelMacro {
             subtype = "Parameterless"
             genericParameters = ""
         } else {
-            subtype = ""
+            subtype = "Parameterized"
             genericParameters = "<" + parameterSwiftDataTypes.joined(separator: ", ") + ">"
         }
         var postgresPreparedStatement = "Postgres\(subtype)PreparedStatement\(genericParameters)"

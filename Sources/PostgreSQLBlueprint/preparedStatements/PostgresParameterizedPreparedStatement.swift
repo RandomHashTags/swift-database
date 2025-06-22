@@ -1,7 +1,7 @@
 
 import SQLBlueprint
 
-public struct PostgresPreparedStatement<each Parameter: PostgresDataTypeProtocol>: SQLParameterizedPreparedStatementProtocol {
+public struct PostgresParameterizedPreparedStatement<each Parameter: PostgresDataTypeProtocol>: PostgresParameterizedPreparedStatementProtocol {
     public let name:String
     public let prepareSQL:String
 
@@ -16,7 +16,7 @@ public struct PostgresPreparedStatement<each Parameter: PostgresDataTypeProtocol
 }
 
 // MARK: Prepare
-extension PostgresPreparedStatement {
+extension PostgresParameterizedPreparedStatement {
     @inlinable
     public func prepare<T: SQLQueryableProtocol & ~Copyable>(
         on connection: borrowing T
@@ -26,7 +26,7 @@ extension PostgresPreparedStatement {
 }
 
 // MARK: Execute
-extension PostgresPreparedStatement {
+extension PostgresParameterizedPreparedStatement {
     @inlinable
     func parameterSQL(_ parameters: (repeat each Parameter)) -> String {
         var valueString = ""
@@ -53,7 +53,7 @@ extension PostgresPreparedStatement {
     }
 
     @inlinable
-    public func execute<T: SQLQueryableProtocol & ~Copyable>(
+    public func execute<T: PostgresQueryableProtocol & ~Copyable>(
         on queryable: borrowing T,
         parameters: (repeat each Parameter),
         explain: Bool = false,

@@ -17,7 +17,14 @@ import SwiftDatabaseBlueprint
 func example() async throws {
     var connection = PostgresConnection()
     try await connection.establish(address: "127.0.0.1", port: 5432, user: "postgres", database: "postgres")
-    let response = try await connection.query(unsafeSQL: "SELECT * FROM test;")
+    /*let migrationResponse = try await connection.query(unsafeSQL: UserAccount.PostgresMigrations.create)
+    print("migrationResponse=\(migrationResponse)")
+    let migration2Response = try await connection.query(unsafeSQL: UserAccount.PostgresMigrations.incremental_v0_0_2)
+    print("migration2Response=\(migration2Response)")
+    let insertResponse = try await UserAccount.PostgresPreparedStatements.insert.prepare(on: connection)
+    print("insertResponse=\(insertResponse)")*/
+    let user = UserAccount(created: Date.now, email: "imrandomhashtags@gmail.com", password: "test", test2: false)
+    let response = try await user.create(on: connection)
     print(response)
 }
 

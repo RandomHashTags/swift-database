@@ -337,10 +337,10 @@ extension PostgresDataType {
 
         case "timestampNoTimeZone":
             guard let int:UInt8 = Self.parseInt(values) else { return nil }
-            self = .timeNoTimeZone(precision: int)
+            self = .timestampNoTimeZone(precision: int)
         case "timestampWithTimeZone":
             guard let int:UInt8 = Self.parseInt(values) else { return nil }
-            self = .timeWithTimeZone(precision: int)
+            self = .timestampWithTimeZone(precision: int)
         case "date":
             self = .date
         case "timeNoTimeZone":

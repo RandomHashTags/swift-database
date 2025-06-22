@@ -37,7 +37,7 @@ extension Optional: PostgresDataTypeProtocol {
     public var postgresValue: String {
         switch self {
         case .none:
-            return "\(Wrapped.self)?"
+            return "NULL"
         case .some(let value):
             if let v = value as? PostgresDataTypeProtocol {
                 return v.postgresValue
@@ -136,7 +136,7 @@ import Foundation
 extension Date: PostgresDataTypeProtocol {
     @inlinable
     public var postgresValue: String {
-        description
+        "'\(self)'"
     }
 }
 extension UUID: PostgresDataTypeProtocol {

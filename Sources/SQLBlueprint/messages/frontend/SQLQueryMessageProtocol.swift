@@ -1,4 +1,4 @@
 
 public protocol SQLQueryMessageProtocol: Sendable, ~Copyable {
-    associatedtype ConcreteResponse
+    associatedtype ConcreteResponse: SQLQueryMessageResponseProtocol
 }

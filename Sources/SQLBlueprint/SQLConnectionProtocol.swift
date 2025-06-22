@@ -32,10 +32,6 @@ public protocol SQLConnectionProtocol: SQLQueryableProtocol, ~Copyable {
     /// Writes a buffer to the socket.
     @inlinable
     func writeBuffer(_ pointer: UnsafeRawPointer, length: Int) throws
-
-    func queryPreparedStatement<T: SQLPreparedStatementProtocol & ~Copyable>(
-        _ statement: borrowing T
-    ) async throws -> QueryMessage.ConcreteResponse
 }
 
 // MARK: Close file descriptor
@@ -78,15 +74,5 @@ extension SQLConnectionProtocol {
     @inlinable
     public func sendMultiplatform(_ pointer: UnsafeRawPointer, _ length: Int) -> Int {
         return send(fileDescriptor, pointer, length, Int32(MSG_NOSIGNAL))
-    }
-}
-
-// MARK: Query prepared statement
-extension SQLConnectionProtocol {
-    @inlinable
-    public func queryPreparedStatement<T: SQLPreparedStatementProtocol & ~Copyable>(
-        _ statement: borrowing T
-    ) async throws -> QueryMessage.ConcreteResponse {
-        return try await statement.prepare(on: self)
     }
 }

@@ -1,7 +1,7 @@
 
 import SQLBlueprint
 
-public struct PostgresParameterlessPreparedStatement: SQLParameterlessPreparedStatementProtocol, ~Copyable {
+public struct PostgresParameterlessPreparedStatement: PostgresParameterlessPreparedStatementProtocol, ~Copyable {
     public let name:String
     public let prepareSQL:String
 
@@ -18,7 +18,7 @@ public struct PostgresParameterlessPreparedStatement: SQLParameterlessPreparedSt
 // MARK: Prepare
 extension PostgresParameterlessPreparedStatement {
     @inlinable
-    public func prepare<T: SQLQueryableProtocol & ~Copyable>(
+    public func prepare<T: PostgresQueryableProtocol & ~Copyable>(
         on connection: borrowing T
     ) async throws -> T.QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: prepareSQL)
@@ -28,7 +28,7 @@ extension PostgresParameterlessPreparedStatement {
 // MARK: Execute
 extension PostgresParameterlessPreparedStatement {
     @inlinable
-    public func execute<T: SQLQueryableProtocol & ~Copyable>(
+    public func execute<T: PostgresQueryableProtocol & ~Copyable>(
         on connection: borrowing T,
         explain: Bool = false,
         analyze: Bool = false

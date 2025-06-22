@@ -3,12 +3,16 @@ import Logging
 import SQLBlueprint
 import SwiftDatabaseBlueprint
 
-public protocol PostgresConnectionProtocol: SQLConnectionProtocol, ~Copyable where RawMessage == PostgresRawMessage {
+public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQueryableProtocol, ~Copyable where RawMessage == PostgresRawMessage, QueryMessage: PostgresQueryMessageProtocol {
     @inlinable
     func readMessage(_ closure: (RawMessage) throws -> Void) throws
 
     @inlinable
     func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) throws
+
+    func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
+        _ statement: borrowing T
+    ) async throws -> QueryMessage.ConcreteResponse
 }
 
 // MARK: Read message
@@ -48,5 +52,15 @@ extension PostgresConnectionProtocol {
         logger.info("Sending message: \(message)")
         #endif
         try message.write(to: self)
+    }
+}
+
+// MARK: Query prepared statement
+extension PostgresConnectionProtocol {
+    @inlinable
+    public func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
+        _ statement: borrowing T
+    ) async throws -> QueryMessage.ConcreteResponse {
+        return try await statement.prepare(on: self)
     }
 }

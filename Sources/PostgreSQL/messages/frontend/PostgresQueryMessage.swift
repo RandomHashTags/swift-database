@@ -51,7 +51,7 @@ extension PostgresQueryMessage {
 
 // MARK: Response
 extension PostgresQueryMessage {
-    public enum Response: Sendable {
+    public enum Response: PostgresQueryMessageResponseProtocol {
         case commandComplete(PostgresCommandCompleteMessage)
         case copyInResponse(PostgresCopyInResponseMessage)
         case copyOutResponse(PostgresCopyOutResponseMessage)
@@ -62,6 +62,19 @@ extension PostgresQueryMessage {
         case readyForQuery(PostgresReadyForQueryMessage)
         case noticeResponse(PostgresNoticeResponseMessage)
         case unknown(PostgresRawMessage)
+
+        @inlinable
+        public func requireNotError() throws -> Self {
+            switch self {
+            case .errorResponse(let msg):
+                throw PostgresError.errorResponse(msg.values.joined(separator: " "))
+            case .unknown(let msg):
+                throw PostgresError.errorResponse("unknown message type: \(msg.type)")
+            default:
+                break
+            }
+            return self
+        }
 
         @inlinable
         public static func parse(logger: Logger, msg: PostgresRawMessage, _ closure: (Response) throws -> Void) throws {
@@ -98,7 +111,12 @@ extension PostgresQueryMessage {
                 try msg.noticeResponse(logger: logger, {
                     try closure(.noticeResponse($0))
                 })
+            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+                try msg.errorResponse(logger: logger, {
+                    try closure(.errorResponse($0))
+                })
             default:
+                logger.warning("unknown message type: \(msg.type)")
                 try closure(.unknown(msg))
             }
         }
