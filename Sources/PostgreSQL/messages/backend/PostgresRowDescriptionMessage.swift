@@ -5,20 +5,20 @@ import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ROWDESCRIPTION
 public struct PostgresRowDescriptionMessage: PostgresRowDescriptionMessageProtocol {
-    public var fields:[Field]
+    public var columns:[Column]
 
     @inlinable
-    public init(fields: [Field]) {
-        self.fields = fields
+    public init(columns: [Column]) {
+        self.columns = columns
     }
 }
 
-// MARK: Field
+// MARK: Column
 extension PostgresRowDescriptionMessage {
-    public struct Field: Sendable {
+    public struct Column: Sendable {
         public var name:String
         public var tableObjectID:Int32
-        public var columnAttributeNumber:Int32
+        public var columnAttributeNumber:Int16
         public var dataTypeObjectID:Int32
         public var dataTypeSize:Int16
         public var typeModifier:Int32
@@ -28,7 +28,7 @@ extension PostgresRowDescriptionMessage {
         public init(
             name: String,
             tableObjectID: Int32,
-            columnAttributeNumber: Int32,
+            columnAttributeNumber: Int16,
             dataTypeObjectID: Int32,
             dataTypeSize: Int16,
             typeModifier: Int32,
@@ -55,20 +55,20 @@ extension PostgresRowDescriptionMessage {
         guard message.type == .T else {
             throw PostgresError.rowDescription("message type != .T")
         }
-        let numberOfFields:Int16 = message.body.loadUnalignedIntBigEndian(offset: 4)
-        var fields = [Field]()
-        fields.reserveCapacity(Int(numberOfFields))
+        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian(offset: 4)
+        var columns = [Column]()
+        columns.reserveCapacity(Int(numberOfColumns))
         var i = 0
         var offset = 6
-        while i < numberOfFields {
+        while i < numberOfColumns {
             guard let (name, nameLength) = message.body.loadNullTerminatedStringBigEndian(offset: offset) else {
-                throw PostgresError.parameterStatus("failed to load field name string from message body after index \(offset)")
+                throw PostgresError.rowDescription("failed to load column name string from message body after index \(offset)")
             }
             offset += nameLength
             let tableObjectID:Int32 = message.body.loadUnalignedIntBigEndian(offset: offset)
             offset += 4
-            let columnAttributeNumber:Int32 = message.body.loadUnalignedIntBigEndian(offset: offset)
-            offset += 4
+            let columnAttributeNumber:Int16 = message.body.loadUnalignedIntBigEndian(offset: offset)
+            offset += 2
             let dataTypeObjectID:Int32 = message.body.loadUnalignedIntBigEndian(offset: offset)
             offset += 4
             let dataTypeSize:Int16 = message.body.loadUnalignedIntBigEndian(offset: offset)
@@ -77,7 +77,7 @@ extension PostgresRowDescriptionMessage {
             offset += 4
             let formatCode:Int16 = message.body.loadUnalignedIntBigEndian(offset: offset)
             offset += 2
-            fields.append(.init(
+            columns.append(.init(
                 name: name,
                 tableObjectID: tableObjectID,
                 columnAttributeNumber: columnAttributeNumber,
@@ -88,7 +88,7 @@ extension PostgresRowDescriptionMessage {
             ))
             i += 1
         }
-        try closure(.init(fields: fields))
+        try closure(.init(columns: columns))
     }
 }
 
