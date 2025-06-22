@@ -10,12 +10,14 @@ extension ModelMacro {
         structureName: String,
         supportedDatabases: Set<DatabaseType>,
         schema: String,
+        schemaAlias: String?,
+        table: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
         var string = ""
         if supportedDatabases.contains(.postgreSQL) {
-            string += postgresPreparedStatements(schema: schema, selectFilters: selectFilters, fields: fields)
+            string += postgresPreparedStatements(schema: schema, schemaAlias: schemaAlias, table: table, selectFilters: selectFilters, fields: fields)
         }
         return string
     }
@@ -25,9 +27,12 @@ extension ModelMacro {
 extension ModelMacro {
     private static func postgresPreparedStatements(
         schema: String,
+        schemaAlias: String?,
+        table: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
+        let schemaTable = schema + "." + table
         var preparedStatements = [PreparedStatement]()
         let allFieldNamesJoined = fields.map { $0.name }.joined(separator: ", ")
         var insertFields = fields
@@ -39,30 +44,30 @@ extension ModelMacro {
             }
         }
         let insertFieldsJoined = insertFields.map { $0.name }.joined(separator: ", ")
-        let insertSQL = "INSERT INTO \(schema) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
+        let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
         preparedStatements.append(.init(name: "insert", parameters: insertFields, returningFields: [], sql: insertSQL))
 
         if let primaryKeyField {
-            let updateSQL = "UPDATE \(schema) SET " + insertFields.enumerated().map {
+            let updateSQL = "UPDATE \(schemaTable) SET " + insertFields.enumerated().map {
                 $0.element.name + " = $\($0.offset+2)"
             }.joined(separator: ", ") + " WHERE \(primaryKeyField.name) = $1"
             preparedStatements.append(.init(name: "update", parameters: fields, returningFields: [], sql: updateSQL))
             
             for field in insertFields {
                 if field != primaryKeyField {
-                    let sql = "UPDATE \(schema) SET \(field.name) = $2 WHERE \(primaryKeyField.name) = $1"
+                    let sql = "UPDATE \(schemaTable) SET \(field.name) = $2 WHERE \(primaryKeyField.name) = $1"
                     preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returningFields: [], sql: sql))
                 }
             }
 
-            let selectSQL = "SELECT \(allFieldNamesJoined) FROM \(schema) WHERE \(primaryKeyField.name) = $1"
+            let selectSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(primaryKeyField.name) = $1"
             preparedStatements.append(.init(name: "select", parameters: [primaryKeyField], returningFields: fields, sql: selectSQL))
         }
         
-        let selectAllSQL = "SELECT \(allFieldNamesJoined) FROM \(schema)"
+        let selectAllSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable)"
         preparedStatements.append(.init(name: "selectAll", parameters: [], returningFields: fields, sql: selectAllSQL))
 
-        let selectWithLimitAndOffsetSQL = "SELECT \(allFieldNamesJoined) FROM \(schema) LIMIT $1 OFFSET $2"
+        let selectWithLimitAndOffsetSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) LIMIT $1 OFFSET $2"
         preparedStatements.append(.init(
             name: "selectAllWithLimitAndOffset",
             parameters: [
@@ -73,7 +78,7 @@ extension ModelMacro {
             sql: selectWithLimitAndOffsetSQL
         ))
         for field in fields {
-            let sql = "SELECT \(allFieldNamesJoined) FROM \(schema) WHERE \(field.name) = $1"
+            let sql = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(field.name) = $1"
             let name = field.formattedName
             preparedStatements.append(.init(
                 name: "selectAllWhere\(name)Equals",
@@ -85,7 +90,7 @@ extension ModelMacro {
         }
 
         for (selectFields, condition) in selectFilters {
-            let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schema) WHERE " + condition.sql
+            let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schemaTable) WHERE " + condition.sql
             var selectFieldsAndDataTypes = [ModelRevision.Field.Compiled]()
             for field in selectFields {
                 if let target = fields.first(where: { $0.name == field }) {
@@ -100,16 +105,18 @@ extension ModelMacro {
 
         var preparedStatementsString = "public enum PostgresPreparedStatements {"
         for statement in preparedStatements {
-            preparedStatementsString += postgresPreparedStatement(statement: statement, schema: schema)
+            preparedStatementsString += postgresPreparedStatement(statement: statement, schema: schema, schemaAlias: schemaAlias, table: table)
         }
         preparedStatementsString += "\n    }"
         return preparedStatementsString
     }
     private static func postgresPreparedStatement(
         statement: PreparedStatement,
-        schema: String
+        schema: String,
+        schemaAlias: String?,
+        table: String
     ) -> String {
-        let name = schema + "_" + statement.name.lowercased()
+        let name = schema + "_" + table + "_" + statement.name.lowercased()
         var parameterSwiftDataTypes = [String]()
         var parameterPostgresDataTypes = [String]()
         for param in statement.parameters {

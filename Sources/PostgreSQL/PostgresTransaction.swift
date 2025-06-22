@@ -7,7 +7,7 @@ public struct PostgresTransaction: PostgresTransactionProtocol, ~Copyable {
     public typealias QueryMessage = PostgresQueryMessage
 
     @usableFromInline
-    let connection:PostgresConnection
+    var connection:PostgresConnection
 
     @inlinable
     public init(
@@ -21,7 +21,7 @@ public struct PostgresTransaction: PostgresTransactionProtocol, ~Copyable {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    func begin() async throws -> QueryMessage.ConcreteResponse {
+    mutating func begin() async throws -> QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: "BEGIN")
     }
 }
@@ -30,7 +30,7 @@ extension PostgresTransaction {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    func commit() async throws -> QueryMessage.ConcreteResponse {
+    mutating func commit() async throws -> QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: "COMMIT")
     }
 }
@@ -39,7 +39,7 @@ extension PostgresTransaction {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    public func query(unsafeSQL: String) async throws -> QueryMessage.ConcreteResponse {
+    public mutating func query(unsafeSQL: String) async throws -> QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: unsafeSQL)
     }
 }
@@ -48,13 +48,13 @@ extension PostgresTransaction {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    func rollback() async throws -> QueryMessage.ConcreteResponse {
+    mutating func rollback() async throws -> QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: "ROLLBACK")
     }
 
     @discardableResult
     @inlinable
-    public func rollbackTo(savepoint: String) async throws -> QueryMessage.ConcreteResponse {
+    public mutating func rollbackTo(savepoint: String) async throws -> QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: "ROLLBACK TO " + savepoint)
     }
 }
@@ -63,7 +63,7 @@ extension PostgresTransaction {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    public func savepoint(named: String) async throws -> QueryMessage.ConcreteResponse {
+    public mutating func savepoint(named: String) async throws -> QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: "SAVEPOINT " + named)
     }
 }

@@ -52,15 +52,22 @@ extension PostgresQueryMessage {
 // MARK: Response
 extension PostgresQueryMessage {
     public enum Response: PostgresQueryMessageResponseProtocol {
+        case bindComplete(PostgresBindCompleteMessage)
+        case closeComplete(PostgresCloseCompleteMessage)
         case commandComplete(PostgresCommandCompleteMessage)
         case copyInResponse(PostgresCopyInResponseMessage)
         case copyOutResponse(PostgresCopyOutResponseMessage)
-        case rowDescription(PostgresRowDescriptionMessage)
         case dataRow(PostgresDataRowMessage)
         case emptyQueryResponse(PostgresEmptyQueryResponseMessage)
-        case errorResponse(PostgresErrorResponseMessage)
-        case readyForQuery(PostgresReadyForQueryMessage)
+        case functionCallResponse(PostgresFunctionCallResponseMessage)
+        case noData(PostgresNoDataMessage)
         case noticeResponse(PostgresNoticeResponseMessage)
+        case errorResponse(PostgresErrorResponseMessage)
+        case parseComplete(PostgresParseCompleteMessage)
+        case portalSuspended(PostgresPortalSuspendedMessage)
+        case readyForQuery(PostgresReadyForQueryMessage)
+        case rowDescription(PostgresRowDescriptionMessage)
+        
         case unknown(PostgresRawMessage)
 
         @inlinable
@@ -77,9 +84,48 @@ extension PostgresQueryMessage {
         }
 
         @inlinable
-        public static func parse(logger: Logger, msg: PostgresRawMessage, _ closure: (Response) throws -> Void) throws {
+        public func waitUntilReadyForQuery<T: PostgresConnectionProtocol & ~Copyable>(
+            on connection: inout T,
+            _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
+        ) throws {
+            switch self {
+            case .bindComplete,
+                    .emptyQueryResponse,
+                    .errorResponse,
+                    .functionCallResponse,
+                    .closeComplete,
+                    .noData,
+                    .parseComplete,
+                    .portalSuspended:
+                break
+            case .unknown(let msg):
+                if let type = PostgresRawMessage.BackendType(rawValue: msg.type), type.isFinalMessage {
+                    break
+                } else {
+                    return
+                }
+            default:
+                return
+            }
+            try connection.waitUntilReadyForQuery(onMessage)
+        }
+
+        @inlinable
+        public static func parse(
+            logger: Logger,
+            msg: PostgresRawMessage,
+            _ closure: (Response) throws -> Void
+        ) throws {
             switch msg.type {
-            case PostgresRawMessage.BackendType.close.rawValue: // command complete
+            case PostgresRawMessage.BackendType.bindComplete.rawValue:
+                try msg.bindComplete(logger: logger, {
+                    try closure(.bindComplete($0))
+                })
+            case PostgresRawMessage.BackendType.closeComplete.rawValue:
+                try msg.closeComplete(logger: logger, {
+                    try closure(.closeComplete($0))
+                })
+            case PostgresRawMessage.BackendType.commandComplete.rawValue:
                 try msg.commandComplete(logger: logger, {
                     try closure(.commandComplete($0))
                 })
@@ -91,10 +137,6 @@ extension PostgresQueryMessage {
                 try msg.copyOutResponse(logger: logger, {
                     try closure(.copyOutResponse($0))
                 })
-            case PostgresRawMessage.BackendType.rowDescription.rawValue:
-                try msg.rowDescription(logger: logger, {
-                    try closure(.rowDescription($0))
-                })
             case PostgresRawMessage.BackendType.dataRow.rawValue:
                 try msg.dataRow(logger: logger, {
                     try closure(.dataRow($0))
@@ -103,17 +145,37 @@ extension PostgresQueryMessage {
                 try msg.emptyQueryResponse(logger: logger, {
                     try closure(.emptyQueryResponse($0))
                 })
-            case PostgresRawMessage.BackendType.readyForQuery.rawValue:
-                try msg.readyForQuery(logger: logger, {
-                    try closure(.readyForQuery($0))
+            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+                try msg.errorResponse(logger: logger, {
+                    try closure(.errorResponse($0))
+                })
+            case PostgresRawMessage.BackendType.functionCallResponse.rawValue:
+                try msg.functionCallResponse(logger: logger, {
+                    try closure(.functionCallResponse($0))
+                })
+            case PostgresRawMessage.BackendType.noData.rawValue:
+                try msg.noData(logger: logger, {
+                    try closure(.noData($0))
                 })
             case PostgresRawMessage.BackendType.noticeResponse.rawValue:
                 try msg.noticeResponse(logger: logger, {
                     try closure(.noticeResponse($0))
                 })
-            case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                try msg.errorResponse(logger: logger, {
-                    try closure(.errorResponse($0))
+            case PostgresRawMessage.BackendType.parseComplete.rawValue:
+                try msg.parseComplete(logger: logger, {
+                    try closure(.parseComplete($0))
+                })
+            case PostgresRawMessage.BackendType.portalSuspended.rawValue:
+                try msg.portalSuspend(logger: logger, {
+                    try closure(.portalSuspended($0))
+                })
+            case PostgresRawMessage.BackendType.readyForQuery.rawValue:
+                try msg.readyForQuery(logger: logger, {
+                    try closure(.readyForQuery($0))
+                })
+            case PostgresRawMessage.BackendType.rowDescription.rawValue:
+                try msg.rowDescription(logger: logger, {
+                    try closure(.rowDescription($0))
                 })
             default:
                 logger.warning("unknown message type: \(msg.type)")

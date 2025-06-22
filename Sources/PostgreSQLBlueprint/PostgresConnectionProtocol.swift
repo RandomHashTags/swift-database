@@ -10,8 +10,14 @@ public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQuery
     @inlinable
     func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) throws
 
-    func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
-        _ statement: borrowing T
+
+    @inlinable
+    mutating func waitUntilReadyForQuery(
+        _ onMessage: (PostgresRawMessage) throws -> Void
+    ) throws
+
+    mutating func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
+        _ statement: inout T
     ) async throws -> QueryMessage.ConcreteResponse
 }
 
@@ -58,9 +64,9 @@ extension PostgresConnectionProtocol {
 // MARK: Query prepared statement
 extension PostgresConnectionProtocol {
     @inlinable
-    public func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
-        _ statement: borrowing T
+    public mutating func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
+        _ statement: inout T
     ) async throws -> QueryMessage.ConcreteResponse {
-        return try await statement.prepare(on: self)
+        return try await statement.prepare(on: &self)
     }
 }

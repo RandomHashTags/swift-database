@@ -110,6 +110,7 @@ extension PostgresConnection {
 extension PostgresConnection {
     @inlinable
     mutating func authenticate() throws {
+        let logger = logger
         var authenticationStatus = AuthenticationStatus.loading
         while authenticationStatus == .loading {
             try readMessage { msg in
@@ -137,44 +138,50 @@ extension PostgresConnection {
         #if DEBUG
         logger.notice("authentication successful")
         #endif
-        try waitUntilReadyForQuery()
+        var backendKeyData:PostgresBackendKeyDataMessage? = nil
+        try waitUntilReadyForQuery { msg in
+            switch msg.type {
+            case PostgresRawMessage.BackendType.backendKeyData.rawValue:
+                try msg.backendKeyData(logger: logger, {
+                    backendKeyData = $0 // TODO: fix
+                })
+            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+                try msg.errorResponse(logger: logger) {
+                    throw PostgresError.readyForQuery("waitUntilReadyForQuery;received errorResponse: \($0.values)")
+                }
+            case PostgresRawMessage.BackendType.noticeResponse.rawValue:
+                try msg.noticeResponse(logger: logger, { _ in
+                    logger.warning("received notice response")
+                })
+            case PostgresRawMessage.BackendType.parameterStatus.rawValue:
+                try msg.parameterStatus(logger: logger, {
+                    logger.info("parameterStatus=\($0)")
+                })
+            case PostgresRawMessage.BackendType.readyForQuery.rawValue:
+                break
+            default:
+                throw PostgresError.readyForQuery("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
+            }
+        }
     }
 }
 
 // MARK: Wait until R4Q
 extension PostgresConnection {
     @inlinable
-    mutating func waitUntilReadyForQuery() throws {
+    public mutating func waitUntilReadyForQuery(
+        _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
+    ) throws {
         #if DEBUG
         logger.notice("waiting until a Ready For Query message is recevied...")
         #endif
         var ready = false
         while !ready {
             try readMessage { msg in
-                switch msg.type {
-                case PostgresRawMessage.BackendType.backendKeyData.rawValue:
-                    try msg.backendKeyData(logger: logger, {
-                        backendKeyData = $0 // TODO: fix
-                    })
-                case PostgresRawMessage.BackendType.parameterStatus.rawValue:
-                    try msg.parameterStatus(logger: logger, {
-                        logger.info("parameterStatus=\($0)")
-                    })
-                case PostgresRawMessage.BackendType.readyForQuery.rawValue:
-                    try msg.readyForQuery(logger: logger, { _ in
-                        ready = true
-                    })
-                case PostgresRawMessage.BackendType.noticeResponse.rawValue:
-                    try msg.noticeResponse(logger: logger, { _ in
-                        logger.warning("received notice response")
-                    })
-                case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                    try msg.errorResponse(logger: logger) {
-                        throw PostgresError.readyForQuery("waitUntilReadyForQuery;received errorResponse: \($0.values)")
-                    }
-                default:
-                    throw PostgresError.readyForQuery("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
+                if msg.type == PostgresRawMessage.BackendType.readyForQuery.rawValue {
+                    ready = true
                 }
+                try onMessage(msg)
             }
         }
         #if DEBUG
@@ -203,13 +210,16 @@ extension PostgresConnection {
 // MARK: Query
 extension PostgresConnection {
     @inlinable
-    public func query(unsafeSQL: String) async throws -> QueryMessage.Response {
+    public mutating func query(unsafeSQL: String) async throws -> QueryMessage.Response {
         var payload = RawMessage.query(unsafeSQL: unsafeSQL)
         try sendMessage(&payload)
         return try await withCheckedThrowingContinuation { continuation in
             do {
                 try readMessage { msg in
                     try QueryMessage.Response.parse(logger: logger, msg: msg, {
+                        if PostgresRawMessage.BackendType(rawValue: msg.type)?.isFinalMessage ?? false {
+                            try self.waitUntilReadyForQuery()
+                        }
                         continuation.resume(returning: $0)
                     })
                 }

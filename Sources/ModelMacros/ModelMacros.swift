@@ -28,8 +28,8 @@ extension IntegerLiteralExprSyntax {
 
 extension StringLiteralExprSyntax {
     package var text: String { segments.description }
-    package func legalText(context: some MacroExpansionContext) -> String? {
-        if let illegal = text.first(where: { !($0.isLetter || $0.isNumber || $0 == "_") }) {
+    package func legalText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
+        if let illegal = text.first(where: { !($0.isLetter || $0.isNumber || $0 == "_" || isLegal($0)) }) {
             context.diagnose(DiagnosticMsg.stringLiteralContainsIllegalCharacter(expr: self, char: illegal))
             return nil
         }

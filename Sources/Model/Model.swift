@@ -4,8 +4,9 @@ import ModelUtilities
 @attached(extension, names: arbitrary)
 public macro Model(
     supportedDatabases: [DatabaseType],
-    schema: String,
+    schema: String = "public",
     schemaAlias: String? = nil,
+    table: String,
     selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
     revisions: [ModelRevision]
 ) = #externalMacro(module: "ModelMacros", type: "ModelMacro")

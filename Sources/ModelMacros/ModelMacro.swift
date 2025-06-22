@@ -22,8 +22,9 @@ extension ModelMacro: ExtensionMacro {
         }
 
         var supportedDatabases = Set<DatabaseType>()
-        var schema:String? = nil
-        var alias:String? = nil
+        var schema:String? = "public"
+        var schemaAlias:String? = nil
+        var table:String? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
         var revisions = [ModelRevision.Compiled]()
         var members = [String]()
@@ -44,9 +45,15 @@ extension ModelMacro: ExtensionMacro {
                     } else {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
                     }
-                case "alias":
+                case "schemaAlias":
                     if let literal = child.expression.stringLiteral {
-                        alias = literal.legalText(context: context)
+                        schemaAlias = literal.legalText(context: context)
+                    } else {
+                        context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
+                    }
+                case "table":
+                    if let literal = child.expression.stringLiteral {
+                        table = literal.legalText(context: context)
                     } else {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
                     }
@@ -85,9 +92,10 @@ extension ModelMacro: ExtensionMacro {
                 }
             }
         }
-        guard let schema else { return [] }
+        guard let schema, let table else { return [] }
         members.append("@inlinable public static var schema: String { \"\(schema)\" }")
-        members.append("@inlinable public static var alias: String? { \(alias == nil ? "nil" : "\"\(alias!)\"") }")
+        members.append("@inlinable public static var alias: String? { \(schemaAlias == nil ? "nil" : "\"\(schemaAlias!)\"") }")
+        members.append("@inlinable public static var table: String { \"\(table)\" }")
 
         var convenienceLogicString = ""
         if let initialVersion = revisions.first?.version {
@@ -129,8 +137,24 @@ extension ModelMacro: ExtensionMacro {
                     context.diagnose(Diagnostic(node: revision.expr, message: DiagnosticMsg.missingPrimaryKey()))
                 }
             }
-            members.append(preparedStatements(context: context, structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, selectFilters: selectFilters, fields: latestFields))
-            members.append(migrations(context: context, supportedDatabases: supportedDatabases, schema: schema, revisions: revisions))
+            members.append(preparedStatements(
+                context: context,
+                structureName: structureName,
+                supportedDatabases: supportedDatabases,
+                schema: schema,
+                schemaAlias: schemaAlias,
+                table: table,
+                selectFilters: selectFilters,
+                fields: latestFields
+            ))
+            members.append(migrations(
+                context: context,
+                supportedDatabases: supportedDatabases,
+                schema: schema,
+                schemaAlias: schemaAlias,
+                table: table,
+                revisions: revisions
+            ))
             members.append(compileSafety(structureName: structureName, fields: latestFields))
 
             convenienceLogicString = convenienceLogic(context: context, structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, fields: latestFields)

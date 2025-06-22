@@ -1,9 +1,9 @@
 
 import SQLBlueprint
 
-public protocol PostgresParameterlessPreparedStatementProtocol: SQLParameterlessPreparedStatementProtocol, ~Copyable {
+public protocol PostgresParameterlessPreparedStatementProtocol: SQLParameterlessPreparedStatementProtocol, PostgresPreparedStatementProtocol, ~Copyable {
     func execute<T: PostgresQueryableProtocol & ~Copyable>(
-        on queryable: borrowing T,
+        on queryable: inout T,
         explain: Bool,
         analyze: Bool
     ) async throws -> T.QueryMessage.ConcreteResponse
@@ -12,11 +12,11 @@ public protocol PostgresParameterlessPreparedStatementProtocol: SQLParameterless
 // MARK: Convenience
 extension PostgresConnectionProtocol {
     @inlinable
-    public func executePreparedStatement<T: PostgresParameterlessPreparedStatementProtocol & ~Copyable>(
-        _ statement: borrowing T,
+    public mutating func executePreparedStatement<T: PostgresParameterlessPreparedStatementProtocol & ~Copyable>(
+        _ statement: inout T,
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> QueryMessage.ConcreteResponse {
-        return try await statement.execute(on: self, explain: explain, analyze: analyze)
+        return try await statement.execute(on: &self, explain: explain, analyze: analyze)
     }
 }

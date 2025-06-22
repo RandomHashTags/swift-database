@@ -5,8 +5,8 @@ extension PostgresRawMessage {
         case backendKeyData           = 75  // K
         case bind                     = 66  // B
         case bindComplete             = 50  // 2
-        case close                    = 67  // C
         case closeComplete            = 57  // 3
+        case commandComplete          = 67  // C
         case copyData                 = 100 // d
         case copyDone                 = 99  // c
         case copyFail                 = 102 // f
@@ -24,8 +24,25 @@ extension PostgresRawMessage {
         case parameterDescription     = 116 // t
         case parseComplete            = 49  // 1
         case parameterStatus          = 83  // S
-        case portalSuspend            = 115 // s
+        case portalSuspended          = 115 // s
         case readyForQuery            = 90  // Z
         case rowDescription           = 84  // T
+
+        @inlinable
+        public var isFinalMessage: Bool {
+            switch self {
+            case .bindComplete,
+                    .closeComplete,
+                    .commandComplete,
+                    .emptyQueryResponse,
+                    .errorResponse,
+                    .functionCallResponse,
+                    .noData,
+                    .parseComplete,
+                    .portalSuspended:
+                true
+            default: false
+            }
+        }
     }
 }

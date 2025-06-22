@@ -19,7 +19,7 @@ public struct PostgresParameterizedPreparedStatement<each Parameter: PostgresDat
 extension PostgresParameterizedPreparedStatement {
     @inlinable
     public func prepare<T: SQLQueryableProtocol & ~Copyable>(
-        on connection: borrowing T
+        on connection: inout T
     ) async throws -> T.QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: prepareSQL)
     }
@@ -49,12 +49,12 @@ extension PostgresParameterizedPreparedStatement {
     ) -> String {
         var sql = (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)("
         sql += parameterSQL((repeat each parameters))
-        return sql + ");"
+        return sql + ")"
     }
 
     @inlinable
     public func execute<T: PostgresQueryableProtocol & ~Copyable>(
-        on queryable: borrowing T,
+        on queryable: inout T,
         parameters: (repeat each Parameter),
         explain: Bool = false,
         analyze: Bool = false
