@@ -20,8 +20,17 @@ extension DiagnosticMsg: FixItMessage {
 
 // MARK: General
 extension DiagnosticMsg {
-    static func expectedStringLiteral(expr: ExprSyntax) -> Diagnostic {
+    static func expectedFunctionCallExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedFunctionCallExpr", message: "Expected function call expression"))
+    }
+    static func expectedMemberAccessExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedMemberAccessExpr", message: "Expected member access expression"))
+    }
+    static func expectedStringLiteral(expr: some ExprSyntaxProtocol) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteral", message: "Expected string literal"))
+    }
+    static func stringLiteralContainsIllegalCharacter(expr: some ExprSyntaxProtocol, char: Character) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "stringLiteralContainsIllegalCharacter", message: "String literal contains illegal character: '\(char)'"))
     }
 }
 

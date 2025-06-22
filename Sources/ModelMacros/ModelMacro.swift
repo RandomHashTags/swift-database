@@ -15,13 +15,14 @@ extension ModelMacro: ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
-        guard let structure = declaration.as(StructDeclSyntax.self) else { return [] }
-        guard let args = node.arguments?.children(viewMode: .all) else { return [] }
-
-        let structureName = structure.name.text
+        guard let structureName = declaration.as(StructDeclSyntax.self)?.name.text ?? declaration.as(ClassDeclSyntax.self)?.name.text,
+                let args = node.arguments?.children(viewMode: .all)
+        else {
+            return []
+        }
 
         var supportedDatabases = Set<DatabaseType>()
-        var schema = ""
+        var schema:String? = nil
         var alias:String? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
         var revisions = [ModelRevision.Compiled]()
@@ -38,14 +39,14 @@ extension ModelMacro: ExtensionMacro {
                         }
                     }
                 case "schema":
-                    if let literal = child.expression.stringLiteral?.text {
-                        schema = literal
+                    if let literal = child.expression.stringLiteral {
+                        schema = literal.legalText(context: context)
                     } else {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
                     }
                 case "alias":
-                    if let literal = child.expression.stringLiteral?.text {
-                        alias = literal
+                    if let literal = child.expression.stringLiteral {
+                        alias = literal.legalText(context: context)
                     } else {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
                     }
@@ -61,11 +62,11 @@ extension ModelMacro: ExtensionMacro {
                                     switch i {
                                     case 0:
                                         fields = t.expression.array?.elements.compactMap({
-                                            guard let literal = $0.expression.stringLiteral?.text else {
+                                            guard let literal = $0.expression.stringLiteral else {
                                                 context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: $0.expression))
                                                 return nil
                                             }
-                                            return literal
+                                            return literal.legalText(context: context)
                                         })
                                     case 1:
                                         condition = ModelCondition.parse(context: context, expr: t.expression)
@@ -84,6 +85,7 @@ extension ModelMacro: ExtensionMacro {
                 }
             }
         }
+        guard let schema else { return [] }
         members.append("@inlinable public static var schema: String { \"\(schema)\" }")
         members.append("@inlinable public static var alias: String? { \(alias == nil ? "nil" : "\"\(alias!)\"") }")
 
@@ -172,11 +174,8 @@ extension ModelCondition {
         context: some MacroExpansionContext,
         expr: ExprSyntax
     ) -> Self? {
-        guard let functionCall = expr.functionCall,
-                (functionCall.calledExpression.declReference?.baseName.text == "ModelCondition"
-                || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
-        else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelCondition()))
+        guard let functionCall = expr.functionCall else {
+            context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
         var name:String? = nil
@@ -185,7 +184,7 @@ extension ModelCondition {
         for argument in functionCall.arguments {
             switch argument.label?.text {
             case "name":
-                name = argument.expression.stringLiteral?.text
+                name = argument.expression.stringLiteral?.legalText(context: context)
             case "firstCondition":
                 firstCondition = ModelCondition.Value.parse(context: context, expr: argument.expression)
             case "additionalConditions":
@@ -216,10 +215,7 @@ extension ModelCondition {
                 break
             }
         }
-        guard let name, let firstCondition else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelCondition()))
-            return nil
-        }
+        guard let name, let firstCondition else { return nil }
         return ModelCondition(name: name, firstCondition: firstCondition, additionalConditions: additionalConditions)
     }
 }
@@ -228,11 +224,8 @@ extension ModelCondition.Value {
         context: some MacroExpansionContext,
         expr: ExprSyntax
     ) -> Self? {
-        guard let functionCall = expr.functionCall,
-                (functionCall.calledExpression.declReference?.baseName.text == "Value"
-                || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
-        else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelConditionValue()))
+        guard let functionCall = expr.functionCall else {
+            context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
         var field:String? = nil
@@ -241,8 +234,8 @@ extension ModelCondition.Value {
         for argument in functionCall.arguments {
             switch argument.label?.text {
             case "field":
-                if let literal = argument.expression.stringLiteral?.text {
-                    field = literal
+                if let literal = argument.expression.stringLiteral {
+                    field = literal.legalText(context: context)
                 } else {
                     context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: argument.expression))
                 }
@@ -251,8 +244,8 @@ extension ModelCondition.Value {
                     `operator` = ModelCondition.Operator(rawValue: s)
                 }
             case "value":
-                if let literal = argument.expression.stringLiteral?.text {
-                    value = literal
+                if let literal = argument.expression.stringLiteral {
+                    value = literal.legalText(context: context)
                 } else {
                     context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: argument.expression))
                 }
@@ -260,10 +253,7 @@ extension ModelCondition.Value {
                 break
             }
         }
-        guard let field, let `operator`, let value else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelConditionValue()))
-            return nil
-        }
+        guard let field, let `operator`, let value else { return nil }
         return Self(field: field, operator: `operator`, value: value)
     }
 }
@@ -281,11 +271,8 @@ extension ModelRevision {
         context: some MacroExpansionContext,
         expr: ExprSyntax
     ) -> Compiled? {
-        guard let functionCall = expr.functionCall,
-                (functionCall.calledExpression.declReference?.baseName.text == "ModelRevision"
-                || functionCall.calledExpression.memberAccess?.declName.baseName.text == "init")
-        else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevision()))
+        guard let functionCall = expr.functionCall else {
+            context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
         var version:(major: Int, minor: Int, patch: Int) = (0, 0, 0)
@@ -311,10 +298,11 @@ extension ModelRevision {
                 updatedFields = parseDictionaryString(context: context, expr: argument.expression)
             case "removedFields":
                 if let values:[(ExprSyntax, String)] = argument.expression.array?.elements.compactMap({
-                    guard let value = $0.expression.stringLiteral?.text else {
+                    guard let literal = $0.expression.stringLiteral else {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: $0.expression))
                         return nil
                     }
+                    guard let value = literal.legalText(context: context) else { return nil }
                     return ($0.expression, value)
                 }) {
                     removedFields = values
@@ -362,7 +350,7 @@ extension ModelRevision.Field {
         expr: ExprSyntax
     ) -> Compiled? {
         guard let functionCall = expr.functionCall else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionField()))
+            context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
         var name:String? = nil
@@ -372,8 +360,8 @@ extension ModelRevision.Field {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
-                if let literal = arg.expression.stringLiteral?.text {
-                    name = literal
+                if let literal = arg.expression.stringLiteral {
+                    name = literal.legalText(context: context)
                 } else {
                     context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: arg.expression))
                 }
@@ -391,17 +379,14 @@ extension ModelRevision.Field {
                     postgresDataType = .init(rawValue: s)
                 }
             case "defaultValue":
-                defaultValue = arg.expression.stringLiteral?.text
+                defaultValue = arg.expression.stringLiteral?.legalText(context: context)
                                 ?? arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text
                                 ?? arg.expression.integerLiteral?.literal.text
             default:
                 break
             }
         }
-        guard let name else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionField()))
-            return nil
-        }
+        guard let name else { return nil }
         return .init(expr: expr, name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue)
     }
 }
@@ -413,7 +398,7 @@ extension ModelRevision.Field.Constraint {
         expr: ExprSyntax
     ) -> Self? {
         guard let member = expr.memberAccess else {
-            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))
+            context.diagnose(DiagnosticMsg.expectedMemberAccessExpr(expr: expr))
             return nil
         }
         switch member.declName.baseName.text {
@@ -430,6 +415,7 @@ extension ModelRevision.Field.Constraint {
         case "references":
             return nil // TODO: fix
         default:
+            context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))
             return nil
         }
     }
