@@ -18,7 +18,7 @@ public struct PostgresPreparedStatement<each Parameter: PostgresDataTypeProtocol
 // MARK: Prepare
 extension PostgresPreparedStatement {
     @inlinable
-    public func prepare<T: SQLConnectionProtocol & ~Copyable>(
+    public func prepare<T: SQLQueryableProtocol & ~Copyable>(
         on connection: borrowing T
     ) async throws -> T.QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: prepareSQL)
@@ -53,22 +53,12 @@ extension PostgresPreparedStatement {
     }
 
     @inlinable
-    public func execute<T: PostgresConnectionProtocol & ~Copyable>(
-        on connection: borrowing T,
+    public func execute<T: SQLQueryableProtocol & ~Copyable>(
+        on queryable: borrowing T,
         parameters: (repeat each Parameter),
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> T.QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze))
-    }
-
-    @inlinable
-    public func execute<T: PostgresTransactionProtocol & ~Copyable>(
-        on transaction: borrowing T,
-        parameters: (repeat each Parameter),
-        explain: Bool = false,
-        analyze: Bool = false
-    ) async throws -> T.Connection.QueryMessage.ConcreteResponse {
-        return try await transaction.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze))
+        return try await queryable.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze))
     }
 }

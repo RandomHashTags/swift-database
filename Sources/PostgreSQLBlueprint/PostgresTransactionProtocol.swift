@@ -1,5 +1,5 @@
 
 import SQLBlueprint
 
-public protocol PostgresTransactionProtocol: SQLTransactionProtocol, ~Copyable where Connection: PostgresConnectionProtocol {
+public protocol PostgresTransactionProtocol: SQLTransactionProtocol, ~Copyable {
 }

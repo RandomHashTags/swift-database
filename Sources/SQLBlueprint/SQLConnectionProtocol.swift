@@ -12,10 +12,8 @@ import WinSDK
 import Logging
 import SwiftDatabaseBlueprint
 
-public protocol SQLConnectionProtocol: Sendable, ~Copyable {
+public protocol SQLConnectionProtocol: SQLQueryableProtocol, ~Copyable {
     associatedtype RawMessage: SQLRawMessageProtocol
-
-    associatedtype QueryMessage: SQLQueryMessageProtocol
 
     init()
 
@@ -34,10 +32,6 @@ public protocol SQLConnectionProtocol: Sendable, ~Copyable {
     /// Writes a buffer to the socket.
     @inlinable
     func writeBuffer(_ pointer: UnsafeRawPointer, length: Int) throws
-
-
-
-    func query(unsafeSQL: String) async throws -> QueryMessage.ConcreteResponse
 
     func queryPreparedStatement<T: SQLPreparedStatementProtocol & ~Copyable>(
         _ statement: borrowing T

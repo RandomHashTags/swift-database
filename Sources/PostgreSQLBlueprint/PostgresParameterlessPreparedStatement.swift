@@ -18,7 +18,7 @@ public struct PostgresParameterlessPreparedStatement: SQLParameterlessPreparedSt
 // MARK: Prepare
 extension PostgresParameterlessPreparedStatement {
     @inlinable
-    public func prepare<T: SQLConnectionProtocol & ~Copyable>(
+    public func prepare<T: SQLQueryableProtocol & ~Copyable>(
         on connection: borrowing T
     ) async throws -> T.QueryMessage.ConcreteResponse {
         return try await connection.query(unsafeSQL: prepareSQL)
@@ -28,7 +28,7 @@ extension PostgresParameterlessPreparedStatement {
 // MARK: Execute
 extension PostgresParameterlessPreparedStatement {
     @inlinable
-    public func execute<T: SQLConnectionProtocol & ~Copyable>(
+    public func execute<T: SQLQueryableProtocol & ~Copyable>(
         on connection: borrowing T,
         explain: Bool = false,
         analyze: Bool = false

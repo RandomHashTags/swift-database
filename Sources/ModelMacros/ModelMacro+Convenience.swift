@@ -51,31 +51,17 @@ extension ModelMacro {
         }
 
         let parametersJoined = validFieldNames.joined(separator: ", ")
-        var string = "@discardableResult\n@inlinable\npublic func create<T: PostgresConnectionProtocol & ~Copyable>(\n"
-        string += "on connection: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
+        var string = "@discardableResult\n@inlinable\npublic func create<T: SQLQueryableProtocol & ~Copyable>(\n"
+        string += "on queryable: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += primaryKeyString
-        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: connection,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n)\n"
+        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: queryable,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n)\n"
         string += "return self\n"
         string += "}\n\n"
 
-        string += "@discardableResult\n@inlinable\npublic func create<T: PostgresTransactionProtocol & ~Copyable>(\n"
-        string += "on transaction: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
-        string += primaryKeyString
-        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: transaction,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n)\n"
-        string += "return self\n"
-        string += "}\n\n"
-
-        string += "@discardableResult\n@inlinable\npublic func update<T: PostgresConnectionProtocol & ~Copyable>(\n"
-        string += "on connection: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
+        string += "@discardableResult\n@inlinable\npublic func update<T: SQLQueryableProtocol & ~Copyable>(\n"
+        string += "on queryable: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += requireID
-        string += "let response = try await PostgresPreparedStatements.update.execute(\non: connection,\nparameters: (\(allValidFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n)\n"
-        string += "return self\n"
-        string += "}\n\n"
-
-        string += "@discardableResult\n@inlinable\npublic func update<T: PostgresTransactionProtocol & ~Copyable>(\n"
-        string += "on transaction: borrowing T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
-        string += requireID
-        string += "let response = try await PostgresPreparedStatements.update.execute(\non: transaction,\nparameters: (\(allValidFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n)\n"
+        string += "let response = try await PostgresPreparedStatements.update.execute(\non: queryable,\nparameters: (\(allValidFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n)\n"
         string += "return self\n"
         string += "}"
         return string

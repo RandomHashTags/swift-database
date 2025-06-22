@@ -1,7 +1,7 @@
 
 public protocol SQLPreparedStatementProtocol: Sendable, ~Copyable {
     @inlinable
-    func prepare<T: SQLConnectionProtocol & ~Copyable>(
+    func prepare<T: SQLQueryableProtocol & ~Copyable>(
         on connection: borrowing T
     ) async throws -> T.QueryMessage.ConcreteResponse
 }
