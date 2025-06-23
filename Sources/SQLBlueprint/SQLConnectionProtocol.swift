@@ -5,6 +5,8 @@ import Android
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Windows)
+import Windows
 #elseif canImport(WinSDK)
 import WinSDK
 #endif

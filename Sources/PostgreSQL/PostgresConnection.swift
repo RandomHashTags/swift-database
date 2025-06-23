@@ -8,6 +8,8 @@ import Darwin
 import Glibc
 #elseif canImport(Musl)
 import Musl
+#elseif canImport(Windows)
+import Windows
 #elseif canImport(WinSDK)
 import WinSDK
 #endif
