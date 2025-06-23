@@ -1,4 +1,4 @@
 
 public protocol PostgresDataRowDecodable: Sendable, ~Copyable {
-    init?(columns: [String?]) throws
+    static func postgresDecode(columns: [String?]) throws -> Self?
 }

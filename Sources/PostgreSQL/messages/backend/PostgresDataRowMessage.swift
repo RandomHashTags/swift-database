@@ -17,7 +17,7 @@ public struct PostgresDataRowMessage: PostgresDataRowMessageProtocol {
 extension PostgresDataRowMessage {
     @inlinable
     public func decode<T: PostgresDataRowDecodable>(as decodable: T.Type) throws -> T? {
-        return try T.init(columns: columns)
+        return try T.postgresDecode(columns: columns)
     }
 }
 

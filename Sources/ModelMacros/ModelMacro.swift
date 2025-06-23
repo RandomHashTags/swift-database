@@ -174,8 +174,16 @@ extension ModelMacro {
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
         var safetyString = "enum Safety {"
+        var fields = fields
+        if let pkIndex = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
+            fields.remove(at: pkIndex)
+        }
         for field in fields {
-            safetyString += "\n        var \(field.name): AnyKeyPath { \\\(structureName).\(field.name) }"
+            if let dataType = field.postgresDataType?.swiftDataType {
+                safetyString += "\n        var \(field.name): KeyPath<\(structureName), \(dataType)\(field.isRequired ? "" : "?")> { \\\(structureName).\(field.name) }"
+            } else {
+                // TODO: show compiler diagnostic
+            }
         }
         safetyString += "\n}"
         return safetyString

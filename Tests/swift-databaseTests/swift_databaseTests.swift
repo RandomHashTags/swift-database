@@ -87,7 +87,7 @@ func example() async throws {
 struct UserAccount: Model {
     typealias IDValue = Int64
 
-    var id:IDValue?
+    var id:IDValue
 
     var created:Date
     var deleted:Date?
@@ -99,17 +99,19 @@ struct UserAccount: Model {
 }
 
 extension UserAccount: PostgresDataRowDecodable {
-    init?(columns: [String?]) throws {
+    static func postgresDecode(columns: [String?]) throws -> Self? {
         guard columns.count == 6 else { return nil }
-        id = IDValue(columns[0]!)
-        created = Date.now
-        if let deleted = columns[2] {
-            self.deleted = Date.now
+        let id = IDValue(columns[0]!)!
+        let created = Date.now
+        let deleted:Date?
+        if let v = columns[2] {
+            deleted = Date.now
         } else {
-            self.deleted = nil
+            deleted = nil
         }
-        email = columns[3]!
-        password = columns[4]!
-        test2 = columns[5]!.first == "t"
+        let email = columns[3]!
+        let password = columns[4]!
+        let test2 = columns[5]!.first == "t"
+        return .init(id: id, created: created, deleted: deleted, email: email, password: password, test2: test2)
     }
 }

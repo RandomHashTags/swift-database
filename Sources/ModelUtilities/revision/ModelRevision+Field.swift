@@ -94,7 +94,7 @@ extension ModelRevision.Field {
 
     public static func timestampWithTimeZone(
         name: String,
-        precision: UInt8,
+        precision: UInt8 = 0,
         constraints: [Constraint] = [.notNull],
         defaultValue: String
     ) -> Self {
@@ -107,7 +107,7 @@ extension ModelRevision.Field {
     }
     public static func timestampNoTimeZone(
         name: String,
-        precision: UInt8,
+        precision: UInt8 = 0,
         constraints: [Constraint] = [.notNull],
         defaultValue: String
     ) -> Self {
@@ -121,6 +121,18 @@ extension ModelRevision.Field {
 }
 
 extension ModelRevision.Field {
+    public static func int16(
+        name: String,
+        constraints: [Constraint] = [.notNull],
+        defaultValue: Int16
+    ) -> Self {
+        .init(
+            name: name,
+            constraints: constraints,
+            postgresDataType: .smallint,
+            defaultValue: defaultValue
+        )
+    }
     public static func int32(
         name: String,
         constraints: [Constraint] = [.notNull],

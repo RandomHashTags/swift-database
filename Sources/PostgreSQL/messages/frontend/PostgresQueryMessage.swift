@@ -70,6 +70,7 @@ extension PostgresQueryMessage {
         
         case unknown(PostgresRawMessage)
 
+        @discardableResult
         @inlinable
         public func requireNotError() throws -> Self {
             switch self {

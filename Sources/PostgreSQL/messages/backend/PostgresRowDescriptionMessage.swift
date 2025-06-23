@@ -93,11 +93,11 @@ extension PostgresRowDescriptionMessage {
     }
 }
 
-// MARK: Convenience
+// MARK: Decode
 extension PostgresRowDescriptionMessage {
     @inlinable
-    public func decode<T: PostgresDataRowDecodable>(
-        on connection: inout PostgresConnection,
+    public func decode<T: PostgresDataRowDecodable, Connection: PostgresConnectionProtocol & ~Copyable>(
+        on connection: inout Connection,
         as decodable: T.Type
     ) throws -> [T?] {
         let logger = connection.logger
@@ -116,8 +116,33 @@ extension PostgresRowDescriptionMessage {
         }
         return values
     }
+
+    @inlinable
+    public func decode<T: PostgresDataRowDecodable, Connection: PostgresConnectionProtocol & ~Copyable, let count: Int>(
+        on connection: inout Connection,
+        as decodable: T.Type
+    ) throws -> InlineArray<count, T?> {
+        let logger = connection.logger
+        var values = InlineArray<count, T?>(repeating: nil)
+        var i = 0
+        try connection.waitUntilReadyForQuery { msg in
+            try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg) { response in
+                switch response {
+                case .dataRow(let dataRow):
+                    values[i] = try dataRow.decode(as: decodable)
+                    i += 1
+                case .readyForQuery:
+                    break
+                default:
+                    break
+                }
+            }
+        }
+        return values
+    }
 }
 
+// MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
     public func rowDescription(logger: Logger, _ closure: (consuming PostgresRowDescriptionMessage) throws -> Void) throws {

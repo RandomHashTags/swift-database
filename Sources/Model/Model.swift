@@ -12,18 +12,28 @@ public macro Model(
 ) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
 
 public protocol Model: AnyModel, ~Copyable {
-    associatedtype IDValue: Codable, Sendable
-    var id: IDValue? { get set }
+    associatedtype IDValue: Sendable
+    var id: IDValue { get }
 
     func requireID() throws -> IDValue
 }
 
-extension Model {
+extension Model where IDValue: FixedWidthInteger {
     @inlinable
     public func requireID() throws -> IDValue {
-        guard let id else {
-            throw ModelError.idRequired("\(Self.self) `id` found to be nil")
+        guard id > 0 else {
+            throw ModelError.idRequired("\(Self.self) `id` is required to be > 0")
         }
         return id
+    }
+}
+
+extension Model where IDValue: OptionalProtocol {
+    @inlinable
+    public func requireID() throws -> IDValue {
+        guard let id = id.value() else {
+            throw ModelError.idRequired("\(Self.self) `id` is required to be non-nil")
+        }
+        return .init(id)
     }
 }
