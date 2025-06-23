@@ -28,6 +28,8 @@ We provide blueprint modules that lay out the API of the inner workings of each 
 - [ ] Connection sharding
 - [ ] Pipeline support
 - [ ] Cache system
+- [ ] Data Streaming
+- [ ] Completely non-blocking
 - [ ] MicrosoftSQL
 - [ ] MongoSQL
 - [ ] NoSQL
