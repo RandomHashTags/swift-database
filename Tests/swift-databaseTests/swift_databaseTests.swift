@@ -30,7 +30,10 @@ func example() async throws {
     let preparedResponse = try await UserAccount.PostgresPreparedStatements.selectAll.prepare(on: &connection).requireNotError()
     print("preparedResponse=\(preparedResponse)")
     let response = try await UserAccount.PostgresPreparedStatements.selectAll.execute(on: &connection).requireNotError()
-    print("response=\(response)")
+    if case let .rowDescription(msg) = response {
+        let decoded = try msg.decode(on: &connection, as: UserAccount.self)
+        print("decoded=\(decoded)")
+    }
 }
 
 @Model(
@@ -93,4 +96,20 @@ struct UserAccount: Model {
     var password:String
 
     var test2:Bool
+}
+
+extension UserAccount: PostgresDataRowDecodable {
+    init?(columns: [String?]) throws {
+        guard columns.count == 6 else { return nil }
+        id = IDValue(columns[0]!)
+        created = Date.now
+        if let deleted = columns[2] {
+            self.deleted = Date.now
+        } else {
+            self.deleted = nil
+        }
+        email = columns[3]!
+        password = columns[4]!
+        test2 = columns[5]!.first == "t"
+    }
 }

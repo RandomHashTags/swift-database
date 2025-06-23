@@ -28,7 +28,7 @@ extension PostgresFunctionCallResponseMessage {
         if lengthOfFunctionResult <= 0 {
             value = nil
         } else {
-            value = message.body.loadNullTerminatedStringBigEndian(offset: 8, count: Int(lengthOfFunctionResult))
+            value = message.body.loadStringBigEndian(offset: 8, count: Int(lengthOfFunctionResult))
         }
         try closure(.init(value: value))
     }

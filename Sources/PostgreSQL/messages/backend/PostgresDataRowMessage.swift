@@ -4,12 +4,20 @@ import PostgreSQLBlueprint
 import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DATAROW
-public struct PostgresDataRowMessage: PostgresErrorResponseMessageProtocol {
+public struct PostgresDataRowMessage: PostgresDataRowMessageProtocol {
     public var columns:[String?] // TODO: support binary format
 
     @inlinable
     public init(columns: [String?]) {
         self.columns = columns
+    }
+}
+
+// MARK: Decode
+extension PostgresDataRowMessage {
+    @inlinable
+    public func decode<T: PostgresDataRowDecodable>(as decodable: T.Type) throws -> T? {
+        return try T.init(columns: columns)
     }
 }
 
@@ -35,7 +43,7 @@ extension PostgresDataRowMessage {
                 if lengthOfColumnValue == -1 {
                     result = nil
                 } else {
-                    result = message.body.loadNullTerminatedStringBigEndian(offset: offset, count: Int(lengthOfColumnValue))
+                    result = message.body.loadStringBigEndian(offset: offset, count: Int(lengthOfColumnValue))
                     offset += Int(lengthOfColumnValue)
                 }
                 columns.append(result)

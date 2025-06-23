@@ -1,6 +1,7 @@
 
 import Logging
 import PostgreSQLBlueprint
+import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ROWDESCRIPTION
@@ -93,6 +94,30 @@ extension PostgresRowDescriptionMessage {
 }
 
 // MARK: Convenience
+extension PostgresRowDescriptionMessage {
+    @inlinable
+    public func decode<T: PostgresDataRowDecodable>(
+        on connection: inout PostgresConnection,
+        as decodable: T.Type
+    ) throws -> [T?] {
+        let logger = connection.logger
+        var values = [T?]()
+        try connection.waitUntilReadyForQuery { msg in
+            try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg) { response in
+                switch response {
+                case .dataRow(let dataRow):
+                    values.append(try dataRow.decode(as: decodable))
+                case .readyForQuery:
+                    break
+                default:
+                    break
+                }
+            }
+        }
+        return values
+    }
+}
+
 extension PostgresRawMessage {
     @inlinable
     public func rowDescription(logger: Logger, _ closure: (consuming PostgresRowDescriptionMessage) throws -> Void) throws {
