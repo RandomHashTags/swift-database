@@ -77,7 +77,7 @@ extension ModelMacro {
     ) -> (name: String, sql: String) {
         let schemaTable = schema + "." + table
         let version = revision.version
-        let incrementalName = "incremental_\("v\(version.0)_\(version.1)_\(version.2)")"
+        let incrementalName = "incremental_v\(version.0)_\(version.1)_\(version.2)"
         var incrementalSQL = ""
         for field in revision.addedFields {
             if let dataType = field.postgresDataType {
@@ -97,6 +97,13 @@ extension ModelMacro {
                 context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
                 continue
             }
+        }
+        if !revision.removedFields.isEmpty {
+            if !incrementalSQL.isEmpty {
+                incrementalSQL += " "
+            }
+            incrementalSQL += revision.removedFields.map { "ALTER TABLE \(schemaTable) DROP COLUMN \($0.name)" }.joined(separator: "; ")
+            incrementalSQL += ";"
         }
         return (incrementalName, incrementalSQL)
     }

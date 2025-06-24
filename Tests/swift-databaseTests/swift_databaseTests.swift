@@ -81,6 +81,10 @@ func example() async throws {
                     defaultValue: false
                 )
             ]
+        ),
+        .init(
+            version: (0, 0, 3),
+            removedFields: ["test2"]
         )
     ]
 )
