@@ -1,5 +1,4 @@
 
-
 #if canImport(Android)
 import Android
 #elseif canImport(Darwin)
@@ -29,11 +28,15 @@ public struct PostgresConnection: PostgresConnectionProtocol {
     var _logger:Logger
 
     @usableFromInline
+    var _configuration:Configuration
+
+    @usableFromInline
     var backendKeyData:PostgresBackendKeyDataMessage?
 
     public init() {
         _fileDescriptor = -1
         _logger = Logger(label: "database.swift.postgresDisconnectedFileDescriptor")
+        _configuration = Configuration()
     }
 
     @inlinable
@@ -44,6 +47,39 @@ public struct PostgresConnection: PostgresConnectionProtocol {
     @inlinable
     public var logger: Logger {
         _logger
+    }
+
+    @inlinable
+    public var configuration: Configuration {
+        _configuration
+    }
+}
+
+// MARK: Configuration
+extension PostgresConnection {
+    public struct Configuration: Sendable {
+        @usableFromInline
+        var dictionary:[String:String] = [:]
+
+        @inlinable
+        public mutating func update(_ msg: PostgresParameterStatusMessage) {
+            dictionary[msg.parameter] = msg.value
+        }
+
+        @inlinable public var inHotStandby: String? { dictionary["in_hot_standby"] }
+        @inlinable public var integerDatetimes: String? { dictionary["integer_datetimes"] }
+        @inlinable public var timeZone: String? { dictionary["TimeZone"] }
+        @inlinable public var intervalStyle: String? { dictionary["IntervalStyle"] }
+        @inlinable public var isSuperuser: String? { dictionary["is_superuser"] }
+        @inlinable public var applicationName: String? { dictionary["application_name"] }
+        @inlinable public var defaultTransactionReadOnly: String? { dictionary["default_transaction_read_only"] }
+        @inlinable public var scramIterations: String? { dictionary["scram_iterations"] }
+        @inlinable public var dateStyle: String? { dictionary["DateStyle"] }
+        @inlinable public var standardConformingStrings: String? { dictionary["standard_conforming_strings"] }
+        @inlinable public var sessionAuthorization: String? { dictionary["session_authorization"] }
+        @inlinable public var clientEncoding: String? { dictionary["client_encoding"] }
+        @inlinable public var serverVersion: String? { dictionary["server_version"] }
+        @inlinable public var serverEncoding: String? { dictionary["server_encoding"] }
     }
 }
 
@@ -131,7 +167,7 @@ extension PostgresConnection {
                         throw PostgresError.authentication("received errorResponse: \($0.values)")
                     }
                 case PostgresRawMessage.BackendType.negotiateProtocolVersion.rawValue:
-                    throw PostgresError.authentication("not yet supported: protocol version negotation")
+                    throw PostgresError.authentication("not yet supported: protocol version negotiation")
                 default:
                     throw PostgresError.authentication("unhandled message type: \(msg.type)")
                 }
@@ -140,31 +176,32 @@ extension PostgresConnection {
         #if DEBUG
         logger.notice("authentication successful")
         #endif
+        var _configuration:Configuration = _configuration
         var backendKeyData:PostgresBackendKeyDataMessage? = nil
         try waitUntilReadyForQuery { msg in
             switch msg.type {
             case PostgresRawMessage.BackendType.backendKeyData.rawValue:
                 try msg.backendKeyData(logger: logger, {
-                    backendKeyData = $0 // TODO: fix
+                    backendKeyData = $0
                 })
             case PostgresRawMessage.BackendType.errorResponse.rawValue:
                 try msg.errorResponse(logger: logger) {
-                    throw PostgresError.readyForQuery("waitUntilReadyForQuery;received errorResponse: \($0.values)")
+                    throw PostgresError.authentication("waitUntilReadyForQuery;received errorResponse: \($0.values)")
                 }
             case PostgresRawMessage.BackendType.noticeResponse.rawValue:
-                try msg.noticeResponse(logger: logger, { _ in
-                    logger.warning("received notice response")
+                try msg.noticeResponse(logger: logger, {
+                    logger.warning("received notice response: \($0)")
                 })
             case PostgresRawMessage.BackendType.parameterStatus.rawValue:
                 try msg.parameterStatus(logger: logger, {
-                    logger.info("parameterStatus=\($0)")
+                    _configuration.update($0)
                 })
-            case PostgresRawMessage.BackendType.readyForQuery.rawValue:
-                break
             default:
-                throw PostgresError.readyForQuery("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
+                throw PostgresError.authentication("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
             }
         }
+        self._configuration = _configuration
+        self.backendKeyData = backendKeyData
     }
 }
 
@@ -175,13 +212,14 @@ extension PostgresConnection {
         _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
     ) throws {
         #if DEBUG
-        logger.notice("waiting until a Ready For Query message is recevied...")
+        logger.notice("waiting until a Ready For Query message is received...")
         #endif
         var ready = false
         while !ready {
             try readMessage { msg in
                 if msg.type == PostgresRawMessage.BackendType.readyForQuery.rawValue {
                     ready = true
+                    return
                 }
                 try onMessage(msg)
             }

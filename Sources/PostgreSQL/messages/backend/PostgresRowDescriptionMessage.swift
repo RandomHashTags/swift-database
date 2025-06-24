@@ -107,8 +107,6 @@ extension PostgresRowDescriptionMessage {
                 switch response {
                 case .dataRow(let dataRow):
                     values.append(try dataRow.decode(as: decodable))
-                case .readyForQuery:
-                    break
                 default:
                     break
                 }
@@ -131,8 +129,6 @@ extension PostgresRowDescriptionMessage {
                 case .dataRow(let dataRow):
                     values[i] = try dataRow.decode(as: decodable)
                     i += 1
-                case .readyForQuery:
-                    break
                 default:
                     break
                 }
