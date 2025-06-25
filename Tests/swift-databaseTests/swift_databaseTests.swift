@@ -23,7 +23,7 @@ func example() async throws {
     print("migration2Response=\(migration2Response)")
     let insertResponse = try await UserAccount.PostgresPreparedStatements.insert.prepare(on: &connection).requireNotError()
     print("insertResponse=\(insertResponse)")
-    let user = UserAccount(created: Date.now, email: "imrandomhashtags@gmail.com", password: "test", test2: false)
+    let user = UserAccount(id: -1, created: Date.now, email: "imrandomhashtags@gmail.com", password: "test", test2: false)
     let userCreateResponse = try await user.create(on: &connection)
     print("userCreateResponse=\(userCreateResponse)")*/
 
@@ -54,12 +54,12 @@ func example() async throws {
                 ),
                 .init(
                     name: "created",
-                    postgresDataType: .timestampWithTimeZone(precision: 0)
+                    postgresDataType: .timestampNoTimeZone(precision: 0)
                 ),
                 .init(
                     name: "deleted",
                     constraints: [],
-                    postgresDataType: .timestampWithTimeZone(precision: 0)
+                    postgresDataType: .timestampNoTimeZone(precision: 0)
                 ),
                 .init(
                     name: "email",
@@ -105,11 +105,11 @@ struct UserAccount: Model {
 extension UserAccount: PostgresDataRowDecodable {
     static func postgresDecode(columns: [String?]) throws -> Self? {
         guard columns.count == 6 else { return nil }
-        let id = IDValue(columns[0]!)!
-        let created = Date.now
+        guard let id = IDValue(columns[0]!) else { return nil }
+        let created = try Date.postgresDecode(as: .timestampNoTimeZone(precision: 0), columns[1]!) ?? Date.now
         let deleted:Date?
         if let v = columns[2] {
-            deleted = Date.now
+            deleted = try Date.postgresDecode(as: .timestampNoTimeZone(precision: 0), v) ?? Date.now
         } else {
             deleted = nil
         }
