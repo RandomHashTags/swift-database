@@ -50,17 +50,16 @@ extension PostgresRowDescriptionMessage {
 extension PostgresRowDescriptionMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .T else {
             throw PostgresError.rowDescription("message type != .T")
         }
-        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian(offset: 4)
+        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian()
         var columns = [Column]()
         columns.reserveCapacity(Int(numberOfColumns))
         var i = 0
-        var offset = 6
+        var offset = 2
         while i < numberOfColumns {
             guard let (name, nameLength) = message.body.loadNullTerminatedStringBigEndian(offset: offset) else {
                 throw PostgresError.rowDescription("failed to load column name string from message body after index \(offset)")
@@ -89,7 +88,7 @@ extension PostgresRowDescriptionMessage {
             ))
             i += 1
         }
-        try closure(.init(columns: columns))
+        return .init(columns: columns)
     }
 }
 
@@ -99,17 +98,16 @@ extension PostgresRowDescriptionMessage {
     public func decode<T: PostgresDataRowDecodable, Connection: PostgresConnectionProtocol & ~Copyable>(
         on connection: inout Connection,
         as decodable: T.Type
-    ) throws -> [T?] {
+    ) async throws -> [T?] {
         let logger = connection.logger
         var values = [T?]()
-        try connection.waitUntilReadyForQuery { msg in
-            try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg) { response in
-                switch response {
-                case .dataRow(let dataRow):
-                    values.append(try dataRow.decode(as: decodable))
-                default:
-                    break
-                }
+        try await connection.waitUntilReadyForQuery { msg in
+            let response = try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
+            switch response {
+            case .dataRow(let dataRow):
+                values.append(try dataRow.decode(as: decodable))
+            default:
+                break
             }
         }
         return values
@@ -119,19 +117,18 @@ extension PostgresRowDescriptionMessage {
     public func decode<T: PostgresDataRowDecodable, Connection: PostgresConnectionProtocol & ~Copyable, let count: Int>(
         on connection: inout Connection,
         as decodable: T.Type
-    ) throws -> InlineArray<count, T?> {
+    ) async throws -> InlineArray<count, T?> {
         let logger = connection.logger
         var values = InlineArray<count, T?>(repeating: nil)
         var i = 0
-        try connection.waitUntilReadyForQuery { msg in
-            try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg) { response in
-                switch response {
-                case .dataRow(let dataRow):
-                    values[i] = try dataRow.decode(as: decodable)
-                    i += 1
-                default:
-                    break
-                }
+        try await connection.waitUntilReadyForQuery { msg in
+            let response = try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
+            switch response {
+            case .dataRow(let dataRow):
+                values[i] = try dataRow.decode(as: decodable)
+                i += 1
+            default:
+                break
             }
         }
         return values
@@ -141,10 +138,10 @@ extension PostgresRowDescriptionMessage {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func rowDescription(logger: Logger, _ closure: (consuming PostgresRowDescriptionMessage) throws -> Void) throws {
+    public func rowDescription(logger: Logger) throws -> PostgresRowDescriptionMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresRowDescriptionMessage")
         #endif
-        try PostgresRowDescriptionMessage.parse(message: self, closure)
+        return try PostgresRowDescriptionMessage.parse(message: self)
     }
 }

@@ -1,6 +1,7 @@
 
 import PostgreSQLBlueprint
 import SQLBlueprint
+import PostgreSQLBlueprint
 import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-CANCELREQUEST
@@ -21,25 +22,24 @@ public struct PostgresCancelRequestMessage: PostgresCancelRequestMessageProtocol
 // MARK: Payload
 extension PostgresCancelRequestMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 16, { buffer in
-            var i = 0
-            buffer.writeIntBigEndian(Int32(16), to: &i)
-            buffer.writeIntBigEndian(Int32(80877102), to: &i)
-            buffer.writeIntBigEndian(processID, to: &i)
-            buffer.writeIntBigEndian(secretKey, to: &i)
-            try closure(buffer)
-        })
+    public mutating func payload() -> ByteBuffer {
+        let buffer = ByteBuffer(capacity: 16)
+        var i = 0
+        buffer.writeIntBigEndian(Int32(16), to: &i)
+        buffer.writeIntBigEndian(Int32(80877102), to: &i)
+        buffer.writeIntBigEndian(processID, to: &i)
+        buffer.writeIntBigEndian(secretKey, to: &i)
+        return buffer
     }
 }
 
 // MARK: Write
 extension PostgresCancelRequestMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

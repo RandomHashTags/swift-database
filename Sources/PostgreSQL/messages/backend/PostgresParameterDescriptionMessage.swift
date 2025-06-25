@@ -17,32 +17,31 @@ public struct PostgresParameterDescriptionMessage: PostgresParameterDescriptionM
 extension PostgresParameterDescriptionMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .t else {
             throw PostgresError.parameterDescription("message type != .t")
         }
-        let length:Int32 = message.body.loadUnalignedIntBigEndian() - 6
+        let length = message.bodyCount
         var parameters = [Int32]()
-        let parametersCount:Int16 = message.body.loadUnalignedIntBigEndian(offset: 4)
+        let parametersCount:Int16 = message.body.loadUnalignedIntBigEndian()
         parameters.reserveCapacity(Int(parametersCount))
-        var offset = 6
+        var offset = 2
         while offset < length {
             parameters.append(message.body.loadUnalignedIntBigEndian(offset: offset))
             offset += 4
         }
-        try closure(.init(parameters: parameters))
+        return .init(parameters: parameters)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func parameterDescription(logger: Logger, _ closure: (consuming PostgresParameterDescriptionMessage) throws -> Void) throws {
+    public func parameterDescription(logger: Logger) throws -> PostgresParameterDescriptionMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresParameterDescriptionMessage")
         #endif
-        try PostgresParameterDescriptionMessage.parse(message: self, closure)
+        return try PostgresParameterDescriptionMessage.parse(message: self)
     }
 }

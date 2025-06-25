@@ -9,48 +9,47 @@ public enum PostgresAuthenticationMessage: PostgresAuthenticationMessageProtocol
     case cleartextPassword
     case md5Password(salt: Int32)
     case gss
-    case gssContinue(data: UnsafeMutableBufferPointer<UInt8>)
+    case gssContinue(data: ByteBuffer)
     case sspi
     case sasl(names: [String])
-    case saslContinue(data: UnsafeMutableBufferPointer<UInt8>)
-    case saslFinal(data: UnsafeMutableBufferPointer<UInt8>)
+    case saslContinue(data: ByteBuffer)
+    case saslFinal(data: ByteBuffer)
 }
 
 // MARK: Parse
 extension PostgresAuthenticationMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .R else {
             throw PostgresError.authentication("message type != .R")
         }
-        let length:Int32 = message.body.loadUnalignedIntBigEndian()
-        let id:UInt8 = message.body.loadUnalignedIntBigEndian(offset: 4)
+        let length:Int32 = message.bodyCount
+        let id:Int32 = message.body.loadUnalignedIntBigEndian()
         switch id {
         case 0:
-            try closure(.ok)
+            return .ok
         case 2:
-            try closure(.kerberosV5)
+            return .kerberosV5
         case 3:
-            try closure(.cleartextPassword)
+            return .cleartextPassword
         case 5:
-            try closure(.md5Password(salt: message.body.loadUnalignedIntBigEndian(offset: 8)))
+            return .md5Password(salt: message.body.loadUnalignedIntBigEndian(offset: 4))
         case 7:
-            try closure(.gss)
+            return .gss
         case 8:
-            let capacity = Int(length - 8)
+            let capacity = Int(length - 4)
             try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
                 buffer.copyBuffer(message.body.baseAddress! + 8, count: capacity, to: 0)
-                try closure(.gssContinue(data: buffer))
+                return .gssContinue(data: buffer)
             })
         case 9:
-            try closure(.sspi)
+            return .sspi
         case 10:
             var names = [String]()
-            var startIndex = 8
-            var i = 8
+            var startIndex = 4
+            var i = 4
             while i < length {
                 guard let (string, length) = message.body.loadNullTerminatedStringBigEndian(offset: startIndex) else {
                     throw PostgresError.authentication("failed to load string from message body after index \(startIndex)")
@@ -59,18 +58,18 @@ extension PostgresAuthenticationMessage {
                 i += length
                 startIndex = i
             }
-            try closure(.sasl(names: names))
+            return .sasl(names: names)
         case 11:
-            let capacity = Int(length - 8)
+            let capacity = Int(length - 4)
             try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                buffer.copyBuffer(message.body, offset: 8, count: capacity, to: 0)
-                try closure(.saslContinue(data: buffer))
+                buffer.copyBuffer(message.body, offset: 4, count: capacity, to: 0)
+                return .saslContinue(data: buffer)
             })
         case 12:
-            let capacity = Int(length - 8)
+            let capacity = Int(length - 4)
             try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                buffer.copyBuffer(message.body, offset: 8, count: capacity, to: 0)
-                try closure(.saslFinal(data: buffer))
+                buffer.copyBuffer(message.body, offset: 4, count: capacity, to: 0)
+                return .saslFinal(data: buffer)
             })
         default:
             throw PostgresError.authentication("length=\(length);unhandled id: \(id)")
@@ -81,10 +80,10 @@ extension PostgresAuthenticationMessage {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func authentication(logger: Logger, _ closure: (consuming PostgresAuthenticationMessage) throws -> Void) throws {
+    public func authentication(logger: Logger) throws -> PostgresAuthenticationMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresAuthenticationMessage")
         #endif
-        try PostgresAuthenticationMessage.parse(message: self, closure)
+        return try PostgresAuthenticationMessage.parse(message: self)
     }
 }

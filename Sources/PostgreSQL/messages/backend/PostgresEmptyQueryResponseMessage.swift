@@ -14,23 +14,22 @@ public struct PostgresEmptyQueryResponseMessage: PostgresEmptyQueryResponseMessa
 extension PostgresEmptyQueryResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .I else {
             throw PostgresError.emptyQueryResponse("message type != .I")
         }
-        try closure(.init())
+        return .init()
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func emptyQueryResponse(logger: Logger, _ closure: (consuming PostgresEmptyQueryResponseMessage) throws -> Void) throws {
+    public func emptyQueryResponse(logger: Logger) throws -> PostgresEmptyQueryResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresEmptyQueryResponseMessage")
         #endif
-        try PostgresEmptyQueryResponseMessage.parse(message: self, closure)
+        return try PostgresEmptyQueryResponseMessage.parse(message: self)
     }
 }

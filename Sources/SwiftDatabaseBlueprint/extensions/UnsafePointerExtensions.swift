@@ -15,48 +15,48 @@ import WinSDK
 #endif
 
 // MARK: Copy buffer
-extension UnsafeMutableBufferPointer where Element == UInt8 {
+extension ByteBuffer {
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeBufferPointer<Element>, to index: Int) {
+    public func copyBuffer(_ buffer: UnsafeBufferPointer<UInt8>, to index: Int) {
         var index = index
         copyBuffer(buffer, to: &index)
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<Element>, to index: Int) {
+    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<UInt8>, to index: Int) {
         var index = index
         copyBuffer(buffer, to: &index)
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafePointer<Element>, count: Int, to index: Int) {
+    public func copyBuffer(_ buffer: UnsafePointer<UInt8>, count: Int, to index: Int) {
         var index = index
         copyBuffer(buffer, count: count, to: &index)
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<Element>, offset: Int = 0, count: Int, to index: Int) {
+    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<UInt8>, offset: Int = 0, count: Int, to index: Int) {
         var index = index
         copyBuffer(buffer.baseAddress!, offset: offset, count: count, to: &index)
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeBufferPointer<Element>, to index: inout Int) {
+    public func copyBuffer(_ buffer: UnsafeBufferPointer<UInt8>, to index: inout Int) {
         copyBuffer(buffer.baseAddress!, count: buffer.count, to: &index)
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<Element>, to index: inout Int) {
+    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<UInt8>, to index: inout Int) {
         copyBuffer(buffer.baseAddress!, count: buffer.count, to: &index)
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<Element>, offset: Int = 0, count: Int, to index: inout Int) {
+    public func copyBuffer(_ buffer: UnsafeMutableBufferPointer<UInt8>, offset: Int = 0, count: Int, to index: inout Int) {
         copyBuffer(buffer.baseAddress!, offset: offset, count: count, to: &index)
     }
     
     @inlinable
-    public func copyBuffer(_ buffer: UnsafeMutablePointer<Element>, offset: Int = 0, count: Int, to index: inout Int) {
+    public func copyBuffer(_ buffer: UnsafeMutablePointer<UInt8>, offset: Int = 0, count: Int, to index: inout Int) {
         #if canImport(Android) || canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(WinSDK)
         memcpy(baseAddress! + index, buffer + offset, count)
         index += count
@@ -69,7 +69,7 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
     }
 
     @inlinable
-    public func copyBuffer(_ buffer: UnsafePointer<Element>, offset: Int = 0, count: Int, to index: inout Int) {
+    public func copyBuffer(_ buffer: UnsafePointer<UInt8>, offset: Int = 0, count: Int, to index: inout Int) {
         #if canImport(Android) || canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(WinSDK)
         memcpy(baseAddress! + index, buffer + offset, count)
         index += count
@@ -83,7 +83,7 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
 }
 
 // MARK: Load Int
-extension UnsafeMutableBufferPointer where Element == UInt8 {
+extension ByteBuffer {
     @inlinable
     public func loadUnalignedInt<T: BinaryInteger>() -> T {
         return UnsafeRawPointer(baseAddress!).load(as: T.self)
@@ -106,7 +106,7 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
 }
 
 // MARK: Load string
-extension UnsafeMutableBufferPointer where Element == UInt8 {
+extension ByteBuffer {
     @inlinable
     public func loadNullTerminatedString() -> String {
         return String(cString: baseAddress!)
@@ -150,7 +150,7 @@ extension UnsafeMutableBufferPointer where Element == UInt8 {
 }
 
 // MARK: Write int
-extension UnsafeMutableBufferPointer where Element == UInt8 {
+extension ByteBuffer {
     @inlinable
     public func writeIntBigEndian<T: FixedWidthInteger>(_ value: T, to index: inout Int) {
         withUnsafeBytes(of: value.bigEndian, {

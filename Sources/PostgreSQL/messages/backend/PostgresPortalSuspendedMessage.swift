@@ -14,23 +14,22 @@ public struct PostgresPortalSuspendedMessage: PostgresPortalSuspendedMessageProt
 extension PostgresPortalSuspendedMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .s else {
             throw PostgresError.portalSuspended("message type != .s")
         }
-        try closure(.init())
+        return .init()
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func portalSuspend(logger: Logger, _ closure: (consuming PostgresPortalSuspendedMessage) throws -> Void) throws {
+    public func portalSuspend(logger: Logger) throws -> PostgresPortalSuspendedMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresPortalSuspendedMessage")
         #endif
-        try PostgresPortalSuspendedMessage.parse(message: self, closure)
+        return try PostgresPortalSuspendedMessage.parse(message: self)
     }
 }

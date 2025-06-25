@@ -14,23 +14,22 @@ public struct PostgresNoDataMessage: PostgresNoDataMessageProtocol {
 extension PostgresNoDataMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .n else {
             throw PostgresError.noData("message type != .n")
         }
-        try closure(.init())
+        return .init()
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func noData(logger: Logger, _ closure: (consuming PostgresNoDataMessage) throws -> Void) throws {
+    public func noData(logger: Logger) throws -> PostgresNoDataMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresNoDataMessage")
         #endif
-        try PostgresNoDataMessage.parse(message: self, closure)
+        return try PostgresNoDataMessage.parse(message: self)
     }
 }

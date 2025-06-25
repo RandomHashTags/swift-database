@@ -16,15 +16,14 @@ public struct PostgresPasswordMessage: PostgresPasswordMessageProtocol {
 // MARK: Payload
 extension PostgresPasswordMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try password.withUTF8 { passwordBuffer in
+    public mutating func payload() -> ByteBuffer {
+        return password.withUTF8 { passwordBuffer in
             let capacity = 5 + passwordBuffer.count
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                var i = 0
-                buffer.writePostgresMessageHeader(type: .p, capacity: capacity, to: &i)
-                buffer.copyBuffer(passwordBuffer, to: &i)
-                try closure(buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            var i = 0
+            buffer.writePostgresMessageHeader(type: .p, capacity: capacity, to: &i)
+            buffer.copyBuffer(passwordBuffer, to: &i)
+            return buffer
         }
     }
 }
@@ -32,10 +31,10 @@ extension PostgresPasswordMessage {
 // MARK: Write
 extension PostgresPasswordMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

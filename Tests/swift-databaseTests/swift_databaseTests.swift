@@ -106,10 +106,10 @@ extension UserAccount: PostgresDataRowDecodable {
     static func postgresDecode(columns: [String?]) throws -> Self? {
         guard columns.count == 6 else { return nil }
         guard let id = IDValue(columns[0]!) else { return nil }
-        let created = try Date.postgresDecode(as: .timestampNoTimeZone(precision: 0), columns[1]!) ?? Date.now
+        let created = try Date.postgresDecode(columns[1]!, as: .timestampNoTimeZone(precision: 0)) ?? Date.now
         let deleted:Date?
         if let v = columns[2] {
-            deleted = try Date.postgresDecode(as: .timestampNoTimeZone(precision: 0), v) ?? Date.now
+            deleted = try Date.postgresDecode(v, as: .timestampNoTimeZone(precision: 0)) ?? Date.now
         } else {
             deleted = nil
         }

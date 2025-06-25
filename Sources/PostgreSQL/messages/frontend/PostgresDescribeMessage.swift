@@ -32,20 +32,19 @@ extension PostgresDescribeMessage {
 // MARK: Payload
 extension PostgresDescribeMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
+    public mutating func payload() -> ByteBuffer {
         switch type {
         case .preparedStatement(var name), .portal(var name):
-            try name.withUTF8 { nameBuffer in
+            return name.withUTF8 { nameBuffer in
                 let capacity = 7 + nameBuffer.count
-                try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                    var i = 0
-                    buffer.writePostgresMessageHeader(type: .D, capacity: capacity, to: &i)
-                    buffer[i] = type.byte
-                    i += 1
-                    buffer.copyBuffer(nameBuffer, to: &i)
-                    buffer[i] = 0
-                    try closure(buffer)
-                })
+                let buffer = ByteBuffer(capacity: capacity)
+                var i = 0
+                buffer.writePostgresMessageHeader(type: .D, capacity: capacity, to: &i)
+                buffer[i] = type.byte
+                i += 1
+                buffer.copyBuffer(nameBuffer, to: &i)
+                buffer[i] = 0
+                return buffer
             }
         }
     }
@@ -54,10 +53,10 @@ extension PostgresDescribeMessage {
 // MARK: Write
 extension PostgresDescribeMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

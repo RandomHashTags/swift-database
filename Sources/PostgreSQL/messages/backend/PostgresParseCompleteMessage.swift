@@ -14,23 +14,22 @@ public struct PostgresParseCompleteMessage: PostgresParseCompleteMessageProtocol
 extension PostgresParseCompleteMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .`1` else {
             throw PostgresError.parseComplete("message type != .`1`")
         }
-        try closure(.init())
+        return .init()
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func parseComplete(logger: Logger, _ closure: (consuming PostgresParseCompleteMessage) throws -> Void) throws {
+    public func parseComplete(logger: Logger) throws -> PostgresParseCompleteMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresParseCompleteMessage")
         #endif
-        try PostgresParseCompleteMessage.parse(message: self, closure)
+        return try PostgresParseCompleteMessage.parse(message: self)
     }
 }

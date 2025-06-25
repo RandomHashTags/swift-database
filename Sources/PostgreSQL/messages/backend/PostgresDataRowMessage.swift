@@ -25,17 +25,16 @@ extension PostgresDataRowMessage {
 extension PostgresDataRowMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .D else {
             throw PostgresError.dataRow("message type != .D")
         }
-        let numberOfColumnValues:Int16 = message.body.loadUnalignedIntBigEndian(offset: 4)
+        let numberOfColumnValues:Int16 = message.body.loadUnalignedIntBigEndian()
         var columns:[String?] = []
         if numberOfColumnValues > 0 {
             columns.reserveCapacity(Int(numberOfColumnValues))
-            var offset = 6
+            var offset = 2
             for _ in 0..<Int(numberOfColumnValues) {
                 let lengthOfColumnValue:Int32 = message.body.loadUnalignedIntBigEndian(offset: offset)
                 offset += 4
@@ -49,17 +48,17 @@ extension PostgresDataRowMessage {
                 columns.append(result)
             }
         }
-        try closure(.init(columns: columns))
+        return .init(columns: columns)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func dataRow(logger: Logger, _ closure: (consuming PostgresDataRowMessage) throws -> Void) throws {
+    public func dataRow(logger: Logger) throws -> PostgresDataRowMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresDataRowMessage")
         #endif
-        try PostgresDataRowMessage.parse(message: self, closure)
+        return try PostgresDataRowMessage.parse(message: self)
     }
 }

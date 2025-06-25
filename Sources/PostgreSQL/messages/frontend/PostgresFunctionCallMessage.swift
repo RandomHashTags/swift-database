@@ -27,18 +27,19 @@ public struct PostgresFunctionCallMessage: PostgresFunctionCallMessageProtocol {
 // MARK: Payload
 extension PostgresFunctionCallMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
+    public mutating func payload() -> ByteBuffer {
         // TODO: implement
+        return ByteBuffer(capacity: 0)
     }
 }
 
 // MARK: Write
 extension PostgresFunctionCallMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

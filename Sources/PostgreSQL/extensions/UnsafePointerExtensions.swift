@@ -1,7 +1,7 @@
 
 import SwiftDatabaseBlueprint
 
-extension UnsafeMutableBufferPointer where Element == UInt8 {
+extension ByteBuffer {
     @inlinable
     public func writePostgresMessageHeader(
         type: UInt8,

@@ -83,8 +83,8 @@ extension Date: PostgresDataDecodable {
 
     @inlinable
     public static func postgresDecode(
-        as type: PostgresDataType,
-        _ value: String
+        _ value: String,
+        as type: PostgresDataType
     ) throws -> Date? {
         switch type {
         case .date:

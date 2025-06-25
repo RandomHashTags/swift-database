@@ -48,17 +48,18 @@ extension PostgresBindMessage {
 // MARK: Payload
 extension PostgresBindMessage {
     @inlinable
-    public func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
+    public func payload() -> ByteBuffer {
         // TODO: implement
+        return ByteBuffer(capacity: 0)
     }
 }
 
 // MARK: Write
 extension PostgresBindMessage {
     @inlinable
-    public func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }

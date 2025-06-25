@@ -14,23 +14,22 @@ public struct PostgresBindCompleteMessage: PostgresBindCompleteMessageProtocol {
 extension PostgresBindCompleteMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .`2` else {
             throw PostgresError.bindComplete("message type != .`2`")
         }
-        try closure(.init())
+        return .init()
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func bindComplete(logger: Logger, _ closure: (consuming PostgresBindCompleteMessage) throws -> Void) throws {
+    public func bindComplete(logger: Logger) throws -> PostgresBindCompleteMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresBindCompleteMessage")
         #endif
-        try PostgresBindCompleteMessage.parse(message: self, closure)
+        return try PostgresBindCompleteMessage.parse(message: self)
     }
 }

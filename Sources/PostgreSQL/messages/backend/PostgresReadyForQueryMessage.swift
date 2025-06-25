@@ -26,27 +26,26 @@ extension PostgresReadyForQueryMessage {
 extension PostgresReadyForQueryMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .Z else {
             throw PostgresError.readyForQuery("message type != .Z")
         }
-        let status:UInt8 = message.body.loadUnalignedInt(offset: 4)
+        let status:UInt8 = message.body.loadUnalignedInt()
         guard let transactionStatus = TransactionStatus(rawValue: status) else {
             throw PostgresError.readyForQuery("malformed transaction status: \(status)")
         }
-        try closure(.init(transactionStatus: transactionStatus))
+        return .init(transactionStatus: transactionStatus)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func readyForQuery(logger: Logger, _ closure: (consuming PostgresReadyForQueryMessage) throws -> Void) throws {
+    public func readyForQuery(logger: Logger) throws -> PostgresReadyForQueryMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresReadyForQueryMessage")
         #endif
-        try PostgresReadyForQueryMessage.parse(message: self, closure)
+        return try PostgresReadyForQueryMessage.parse(message: self)
     }
 }

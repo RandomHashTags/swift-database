@@ -19,34 +19,33 @@ public struct PostgresCopyInResponseMessage: PostgresCopyInResponseMessageProtoc
 extension PostgresCopyInResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .G else {
             throw PostgresError.copyInResponse("message type != .G")
         }
-        let format:Int8 = message.body.loadUnalignedIntBigEndian(offset: 4)
-        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian(offset: 5)
+        let format:Int8 = message.body.loadUnalignedIntBigEndian()
+        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian(offset: 1)
         var columnFormatCodes:[Int16] = []
         if numberOfColumns > 0 {
             columnFormatCodes.reserveCapacity(Int(numberOfColumns))
-            var offset = 7
+            var offset = 3
             for _ in 0..<numberOfColumns {
                 columnFormatCodes.append(message.body.loadUnalignedIntBigEndian(offset: offset))
                 offset += 2
             }
         }
-        try closure(.init(format: format, columnFormatCodes: columnFormatCodes))
+        return .init(format: format, columnFormatCodes: columnFormatCodes)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func copyInResponse(logger: Logger, _ closure: (consuming PostgresCopyInResponseMessage) throws -> Void) throws {
+    public func copyInResponse(logger: Logger) throws -> PostgresCopyInResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresCopyInResponseMessage")
         #endif
-        try PostgresCopyInResponseMessage.parse(message: self, closure)
+        return try PostgresCopyInResponseMessage.parse(message: self)
     }
 }

@@ -5,10 +5,16 @@ import SwiftDatabaseBlueprint
 // https://www.postgresql.org/docs/current/protocol-message-formats.html
 public struct PostgresRawMessage: SQLRawMessageProtocol, @unchecked Sendable {
     public let type:UInt8
-    public let body:UnsafeMutableBufferPointer<UInt8>
+    public let bodyCount:Int32
+    public let body:ByteBuffer
 
-    public init(type: UInt8, body: UnsafeMutableBufferPointer<UInt8>) {
+    public init(
+        type: UInt8,
+        bodyCount: Int32,
+        body: ByteBuffer
+    ) {
         self.type = type
+        self.bodyCount = bodyCount
         self.body = body
     }
 }

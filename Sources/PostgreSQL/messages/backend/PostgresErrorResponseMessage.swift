@@ -17,17 +17,16 @@ public struct PostgresErrorResponseMessage: PostgresErrorResponseMessageProtocol
 extension PostgresErrorResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .E else {
             throw PostgresError.errorResponse("message type != .E")
         }
-        let length:Int32 = message.body.loadUnalignedInt() - 4
-        var startIndex = 4
+        let length:Int32 = message.bodyCount
+        var startIndex = 0
         var values = [String]()
         while startIndex < length {
-            let fieldType:UInt8 = message.body.loadUnalignedIntBigEndian(offset: 4)
+            let fieldType:UInt8 = message.body.loadUnalignedIntBigEndian(offset: startIndex)
             startIndex += 1
             if fieldType == 0 {
                 break
@@ -39,17 +38,17 @@ extension PostgresErrorResponseMessage {
                 startIndex += length
             }
         }
-        try closure(.init(values: values))
+        return .init(values: values)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func errorResponse(logger: Logger, _ closure: (consuming PostgresErrorResponseMessage) throws -> Void) throws {
+    public func errorResponse(logger: Logger) throws -> PostgresErrorResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresErrorResponseMessage")
         #endif
-        try PostgresErrorResponseMessage.parse(message: self, closure)
+        return try PostgresErrorResponseMessage.parse(message: self)
     }
 }

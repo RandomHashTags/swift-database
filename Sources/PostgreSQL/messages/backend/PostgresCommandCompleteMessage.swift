@@ -17,23 +17,22 @@ public struct PostgresCommandCompleteMessage: PostgresCommandCompleteMessageProt
 extension PostgresCommandCompleteMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .C else {
             throw PostgresError.commandComplete("message type != .C")
         }
-        try closure(.init(commandTag: message.body.loadStringBigEndian(offset: 4, count: message.body.count - 4)))
+        return .init(commandTag: message.body.loadStringBigEndian(offset: 0, count: Int(message.bodyCount)))
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func commandComplete(logger: Logger, _ closure: (consuming PostgresCommandCompleteMessage) throws -> Void) throws {
+    public func commandComplete(logger: Logger) throws -> PostgresCommandCompleteMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresCommandCompleteMessage")
         #endif
-        try PostgresCommandCompleteMessage.parse(message: self, closure)
+        return try PostgresCommandCompleteMessage.parse(message: self)
     }
 }

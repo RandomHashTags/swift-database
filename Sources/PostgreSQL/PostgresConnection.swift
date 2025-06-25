@@ -139,38 +139,35 @@ extension PostgresConnection {
             "user": user,
             "database" : database
         ])
-        try sendMessage(&startupMessage)
-        try authenticate()
+        try await sendMessage(&startupMessage)
+        try await authenticate()
     }
 }
 
 // MARK: Authenticate
 extension PostgresConnection {
     @inlinable
-    mutating func authenticate() throws {
+    mutating func authenticate() async throws {
         let logger = logger
         var authenticationStatus = AuthenticationStatus.loading
         while authenticationStatus == .loading {
-            try readMessage { msg in
-                switch msg.type {
-                case PostgresRawMessage.BackendType.authentication.rawValue:
-                    try msg.authentication(logger: logger) { auth in
-                        switch auth {
-                        case .ok:
-                            authenticationStatus = .success
-                        default:
-                            throw PostgresError.authentication("not yet supported: \(auth)")
-                        }
-                    }
-                case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                    try msg.errorResponse(logger: logger) {
-                        throw PostgresError.authentication("received errorResponse: \($0.values)")
-                    }
-                case PostgresRawMessage.BackendType.negotiateProtocolVersion.rawValue:
-                    throw PostgresError.authentication("not yet supported: protocol version negotiation")
+            let msg = try await readMessage()
+            switch msg.type {
+            case PostgresRawMessage.BackendType.authentication.rawValue:
+                let auth = try msg.authentication(logger: logger)
+                switch auth {
+                case .ok:
+                    authenticationStatus = .success
                 default:
-                    throw PostgresError.authentication("unhandled message type: \(msg.type)")
+                    throw PostgresError.authentication("not yet supported: \(auth)")
                 }
+            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+                let response = try msg.errorResponse(logger: logger)
+                throw PostgresError.authentication("received errorResponse: \(response.values)")
+            case PostgresRawMessage.BackendType.negotiateProtocolVersion.rawValue:
+                throw PostgresError.authentication("not yet supported: protocol version negotiation")
+            default:
+                throw PostgresError.authentication("unhandled message type: \(msg.type)")
             }
         }
         #if DEBUG
@@ -178,24 +175,19 @@ extension PostgresConnection {
         #endif
         var _configuration:Configuration = _configuration
         var backendKeyData:PostgresBackendKeyDataMessage? = nil
-        try waitUntilReadyForQuery { msg in
+        try await waitUntilReadyForQuery { msg in
             switch msg.type {
             case PostgresRawMessage.BackendType.backendKeyData.rawValue:
-                try msg.backendKeyData(logger: logger, {
-                    backendKeyData = $0
-                })
+                backendKeyData = try msg.backendKeyData(logger: logger)
             case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                try msg.errorResponse(logger: logger) {
-                    throw PostgresError.authentication("waitUntilReadyForQuery;received errorResponse: \($0.values)")
-                }
+                let response = try msg.errorResponse(logger: logger)
+                throw PostgresError.authentication("waitUntilReadyForQuery;received errorResponse: \(response.values)")
             case PostgresRawMessage.BackendType.noticeResponse.rawValue:
-                try msg.noticeResponse(logger: logger, {
-                    logger.warning("received notice response: \($0)")
-                })
+                let response = try msg.noticeResponse(logger: logger)
+                logger.warning("received notice response: \(response)")
             case PostgresRawMessage.BackendType.parameterStatus.rawValue:
-                try msg.parameterStatus(logger: logger, {
-                    _configuration.update($0)
-                })
+                let response = try msg.parameterStatus(logger: logger)
+                _configuration.update(response)
             default:
                 throw PostgresError.authentication("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
             }
@@ -210,19 +202,18 @@ extension PostgresConnection {
     @inlinable
     public mutating func waitUntilReadyForQuery(
         _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
-    ) throws {
+    ) async throws {
         #if DEBUG
         logger.notice("waiting until a Ready For Query message is received...")
         #endif
         var ready = false
         while !ready {
-            try readMessage { msg in
-                if msg.type == PostgresRawMessage.BackendType.readyForQuery.rawValue {
-                    ready = true
-                    return
-                }
-                try onMessage(msg)
+            let msg = try await readMessage()
+            if msg.type == PostgresRawMessage.BackendType.readyForQuery.rawValue {
+                ready = true
+                return
             }
+            try onMessage(msg)
         }
         #if DEBUG
         logger.notice("ready for query")
@@ -252,20 +243,12 @@ extension PostgresConnection {
     @inlinable
     public mutating func query(unsafeSQL: String) async throws -> QueryMessage.Response {
         var payload = RawMessage.query(unsafeSQL: unsafeSQL)
-        try sendMessage(&payload)
-        return try await withCheckedThrowingContinuation { continuation in
-            do {
-                try readMessage { msg in
-                    try QueryMessage.Response.parse(logger: logger, msg: msg, {
-                        if PostgresRawMessage.BackendType(rawValue: msg.type)?.isFinalMessage ?? false {
-                            try self.waitUntilReadyForQuery()
-                        }
-                        continuation.resume(returning: $0)
-                    })
-                }
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        try await sendMessage(&payload)
+        let msg = try await readMessage()
+        let response = try QueryMessage.Response.parse(logger: logger, msg: msg)
+        if PostgresRawMessage.BackendType(rawValue: msg.type)?.isFinalMessage ?? false {
+            try await waitUntilReadyForQuery()
         }
+        return response
     }
 }

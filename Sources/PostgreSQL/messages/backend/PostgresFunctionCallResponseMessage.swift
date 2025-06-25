@@ -17,30 +17,29 @@ public struct PostgresFunctionCallResponseMessage: PostgresFunctionCallResponseM
 extension PostgresFunctionCallResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .V else {
             throw PostgresError.functionCallResponse("message type != .V")
         }
-        let lengthOfFunctionResult:Int32 = message.body.loadUnalignedInt(offset: 4)
+        let lengthOfFunctionResult:Int32 = message.body.loadUnalignedInt()
         let value:String?
         if lengthOfFunctionResult <= 0 {
             value = nil
         } else {
-            value = message.body.loadStringBigEndian(offset: 8, count: Int(lengthOfFunctionResult))
+            value = message.body.loadStringBigEndian(offset: 4, count: Int(lengthOfFunctionResult))
         }
-        try closure(.init(value: value))
+        return .init(value: value)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func functionCallResponse(logger: Logger, _ closure: (consuming PostgresFunctionCallResponseMessage) throws -> Void) throws {
+    public func functionCallResponse(logger: Logger) throws -> PostgresFunctionCallResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresFunctionCallResponseMessage")
         #endif
-        try PostgresFunctionCallResponseMessage.parse(message: self, closure)
+        return try PostgresFunctionCallResponseMessage.parse(message: self)
     }
 }

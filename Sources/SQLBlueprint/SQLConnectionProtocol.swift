@@ -11,6 +11,7 @@ import Windows
 import WinSDK
 #endif
 
+import Dispatch
 import Logging
 import SwiftDatabaseBlueprint
 
@@ -33,7 +34,7 @@ public protocol SQLConnectionProtocol: SQLQueryableProtocol, ~Copyable {
 
     /// Writes a buffer to the socket.
     @inlinable
-    func writeBuffer(_ pointer: UnsafeRawPointer, length: Int) throws
+    func writeBuffer(_ pointer: ByteBuffer) async throws
 }
 
 // MARK: Close file descriptor
@@ -48,24 +49,26 @@ extension SQLConnectionProtocol {
 // MARK: Receive
 extension SQLConnectionProtocol {
     @inlinable
-    public func receive(baseAddress: UnsafeMutablePointer<UInt8>, length: Int, flags: Int32 = 0) -> Int {
-        return recv(fileDescriptor, baseAddress, length, flags)
-    }
-
-    @inlinable
-    public func receive(baseAddress: UnsafeMutableRawPointer, length: Int, flags: Int32 = 0) -> Int {
-        return recv(fileDescriptor, baseAddress, length, flags)
+    public func receive(length: Int, flags: Int32 = 0) async -> ByteBuffer {
+        return await withCheckedContinuation { continutation in
+            DispatchQueue.global().async {
+                let buffer = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: length)
+                let r = recv(fileDescriptor, buffer.baseAddress, length, flags)
+                continutation.resume(returning: .init(buffer))
+            }
+        }
     }
 }
 
 // MARK: Write
 extension SQLConnectionProtocol {
     @inlinable
-    public func writeBuffer(_ buffer: UnsafeRawPointer, length: Int) throws {
+    public func writeBuffer(_ buffer: ByteBuffer) async throws {
+        let length = buffer.count
         var sent = 0
         while sent < length {
             if Task.isCancelled { return }
-            let result = sendMultiplatform(buffer + sent, length - sent)
+            let result = await sendMultiplatform(buffer, offset: sent, length: length - sent)
             if result <= 0 {
                 throw SQLError.send(reason: "result (\(result)) <= 0")
             }
@@ -74,7 +77,11 @@ extension SQLConnectionProtocol {
     }
 
     @inlinable
-    public func sendMultiplatform(_ pointer: UnsafeRawPointer, _ length: Int) -> Int {
-        return send(fileDescriptor, pointer, length, Int32(MSG_NOSIGNAL))
+    public func sendMultiplatform(_ pointer: ByteBuffer, offset: Int, length: Int) async -> Int {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: send(fileDescriptor, pointer.baseAddress! + offset, length, Int32(MSG_NOSIGNAL)))
+            }
+        }
     }
 }

@@ -19,25 +19,24 @@ public struct PostgresBackendKeyDataMessage: PostgresBackendKeyDataMessageProtoc
 extension PostgresBackendKeyDataMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .K else {
             throw PostgresError.backendKeyData("message type != .K")
         }
-        let processID:Int32 = message.body.loadUnalignedIntBigEndian(offset: 4)
-        let secretKey:Int32 = message.body.loadUnalignedIntBigEndian(offset: 8)
-        try closure(.init(processID: processID, secretKey: secretKey))
+        let processID:Int32 = message.body.loadUnalignedIntBigEndian()
+        let secretKey:Int32 = message.body.loadUnalignedIntBigEndian(offset: 4)
+        return .init(processID: processID, secretKey: secretKey)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func backendKeyData(logger: Logger, _ closure: (consuming PostgresBackendKeyDataMessage) throws -> Void) throws {
+    public func backendKeyData(logger: Logger) throws -> PostgresBackendKeyDataMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresBackendKeyDataMessage")
         #endif
-        try PostgresBackendKeyDataMessage.parse(message: self, closure)
+        return try PostgresBackendKeyDataMessage.parse(message: self)
     }
 }

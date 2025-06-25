@@ -13,23 +13,22 @@ public struct PostgresSSLRequestMessage: PostgresSSLRequestMessageProtocol {
 // MARK: Payload
 extension PostgresSSLRequestMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 8, { buffer in
-            var i = 0
-            buffer.writeIntBigEndian(Int32(8), to: &i)
-            buffer.writeIntBigEndian(Int32(80877103), to: &i)
-            try closure(buffer)
-        })
+    public mutating func payload() -> ByteBuffer {
+        let buffer = ByteBuffer(capacity: 8)
+        var i = 0
+        buffer.writeIntBigEndian(Int32(8), to: &i)
+        buffer.writeIntBigEndian(Int32(80877103), to: &i)
+        return buffer
     }
 }
 
 // MARK: Write
 extension PostgresSSLRequestMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

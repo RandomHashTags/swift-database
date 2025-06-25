@@ -21,54 +21,50 @@ public struct PostgresStartupMessage: PostgresStartupMessageProtocol {
 // MARK: Payload
 extension PostgresStartupMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try Self.createBody(parameters: parameters) { bodyBuffer in
-            let capacity = 8 + bodyBuffer.count
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                var i = 0
-                buffer.writeIntBigEndian(Int32(capacity), to: &i)
-                buffer.writeIntBigEndian(protocolVersion, to: &i)
-                buffer.copyBuffer(bodyBuffer, to: &i)
-                try closure(buffer)
-            })
-        }
+    public mutating func payload() -> ByteBuffer {
+        let bodyBuffer = Self.createBody(parameters: parameters)
+        let capacity = 8 + bodyBuffer.count
+        let buffer = ByteBuffer(capacity: capacity)
+        var i = 0
+        buffer.writeIntBigEndian(Int32(capacity), to: &i)
+        buffer.writeIntBigEndian(protocolVersion, to: &i)
+        buffer.copyBuffer(bodyBuffer, to: &i)
+        return buffer
     }
 
     @inlinable
     static func createBody(
-        parameters: [String:String],
-        _ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void
-    ) rethrows {
+        parameters: [String:String]
+    ) -> ByteBuffer {
         var capacity = 1
         for (key, value) in parameters {
             capacity += key.utf8.count + value.utf8.count + 2
         }
-        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-            var i = 0
-            for (var key, var value) in parameters {
-                key.withUTF8 { keyBuffer in
-                    buffer.copyBuffer(keyBuffer, to: &i)
-                    buffer[i] = 0
-                    i += 1
-                }
-                value.withUTF8 { valueBuffer in
-                    buffer.copyBuffer(valueBuffer, to: &i)
-                    buffer[i] = 0
-                    i += 1
-                }
+        let buffer = ByteBuffer(capacity: capacity)
+        var i = 0
+        for (var key, var value) in parameters {
+            key.withUTF8 { keyBuffer in
+                buffer.copyBuffer(keyBuffer, to: &i)
+                buffer[i] = 0
+                i += 1
             }
-            buffer[i] = 0
-            try closure(buffer)
-        })
+            value.withUTF8 { valueBuffer in
+                buffer.copyBuffer(valueBuffer, to: &i)
+                buffer[i] = 0
+                i += 1
+            }
+        }
+        buffer[i] = 0
+        return buffer
     }
 }
 
 // MARK: Write
 extension PostgresStartupMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }

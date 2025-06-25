@@ -25,16 +25,15 @@ public struct PostgresQueryMessage: PostgresQueryMessageProtocol {
 // MARK: Payload
 extension PostgresQueryMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try _unsafeSQL.withUTF8 { sqlBuffer in
+    public mutating func payload() -> ByteBuffer {
+        return _unsafeSQL.withUTF8 { sqlBuffer in
             let capacity = 5 + sqlBuffer.count + 1
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                var i = 0
-                buffer.writePostgresMessageHeader(type: .Q, capacity: capacity, to: &i)
-                buffer.copyBuffer(sqlBuffer, to: &i)
-                buffer[i] = 0
-                try closure(buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            var i = 0
+            buffer.writePostgresMessageHeader(type: .Q, capacity: capacity, to: &i)
+            buffer.copyBuffer(sqlBuffer, to: &i)
+            buffer[i] = 0
+            return buffer
         }
     }
 }
@@ -42,10 +41,10 @@ extension PostgresQueryMessage {
 // MARK: Write
 extension PostgresQueryMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 
@@ -88,7 +87,7 @@ extension PostgresQueryMessage {
         public func waitUntilReadyForQuery<T: PostgresConnectionProtocol & ~Copyable>(
             on connection: inout T,
             _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
-        ) throws {
+        ) async throws {
             switch self {
             case .bindComplete,
                     .emptyQueryResponse,
@@ -108,79 +107,48 @@ extension PostgresQueryMessage {
             default:
                 return
             }
-            try connection.waitUntilReadyForQuery(onMessage)
+            try await connection.waitUntilReadyForQuery(onMessage)
         }
 
         @inlinable
         public static func parse(
             logger: Logger,
-            msg: PostgresRawMessage,
-            _ closure: (Response) throws -> Void
-        ) throws {
+            msg: PostgresRawMessage
+        ) throws -> Self {
             switch msg.type {
             case PostgresRawMessage.BackendType.bindComplete.rawValue:
-                try msg.bindComplete(logger: logger, {
-                    try closure(.bindComplete($0))
-                })
+                return try .bindComplete(msg.bindComplete(logger: logger))
             case PostgresRawMessage.BackendType.closeComplete.rawValue:
-                try msg.closeComplete(logger: logger, {
-                    try closure(.closeComplete($0))
-                })
+                return .closeComplete(try msg.closeComplete(logger: logger))
             case PostgresRawMessage.BackendType.commandComplete.rawValue:
-                try msg.commandComplete(logger: logger, {
-                    try closure(.commandComplete($0))
-                })
+                return .commandComplete(try msg.commandComplete(logger: logger))
             case PostgresRawMessage.BackendType.copyInResponse.rawValue:
-                try msg.copyInResponse(logger: logger, {
-                    try closure(.copyInResponse($0))
-                })
+                return .copyInResponse(try msg.copyInResponse(logger: logger))
             case PostgresRawMessage.BackendType.copyOutResponse.rawValue:
-                try msg.copyOutResponse(logger: logger, {
-                    try closure(.copyOutResponse($0))
-                })
+                return .copyOutResponse(try msg.copyOutResponse(logger: logger))
             case PostgresRawMessage.BackendType.dataRow.rawValue:
-                try msg.dataRow(logger: logger, {
-                    try closure(.dataRow($0))
-                })
+                return .dataRow(try msg.dataRow(logger: logger))
             case PostgresRawMessage.BackendType.emptyQueryResponse.rawValue:
-                try msg.emptyQueryResponse(logger: logger, {
-                    try closure(.emptyQueryResponse($0))
-                })
+                return .emptyQueryResponse(try msg.emptyQueryResponse(logger: logger))
             case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                try msg.errorResponse(logger: logger, {
-                    try closure(.errorResponse($0))
-                })
+                return .errorResponse(try msg.errorResponse(logger: logger))
             case PostgresRawMessage.BackendType.functionCallResponse.rawValue:
-                try msg.functionCallResponse(logger: logger, {
-                    try closure(.functionCallResponse($0))
-                })
+                return .functionCallResponse(try msg.functionCallResponse(logger: logger))
             case PostgresRawMessage.BackendType.noData.rawValue:
-                try msg.noData(logger: logger, {
-                    try closure(.noData($0))
-                })
+                return .noData(try msg.noData(logger: logger))
             case PostgresRawMessage.BackendType.noticeResponse.rawValue:
-                try msg.noticeResponse(logger: logger, {
-                    try closure(.noticeResponse($0))
-                })
+                return .noticeResponse(try msg.noticeResponse(logger: logger))
             case PostgresRawMessage.BackendType.parseComplete.rawValue:
-                try msg.parseComplete(logger: logger, {
-                    try closure(.parseComplete($0))
-                })
+                return .parseComplete(try msg.parseComplete(logger: logger))
             case PostgresRawMessage.BackendType.portalSuspended.rawValue:
-                try msg.portalSuspend(logger: logger, {
-                    try closure(.portalSuspended($0))
-                })
+                return .portalSuspended(try msg.portalSuspend(logger: logger))
             case PostgresRawMessage.BackendType.readyForQuery.rawValue:
-                try msg.readyForQuery(logger: logger, {
-                    try closure(.readyForQuery($0))
-                })
+                return .readyForQuery(try msg.readyForQuery(logger: logger))
             case PostgresRawMessage.BackendType.rowDescription.rawValue:
-                try msg.rowDescription(logger: logger, {
-                    try closure(.rowDescription($0))
-                })
+                return .rowDescription(try msg.rowDescription(logger: logger))
             default:
                 logger.warning("unknown message type: \(msg.type)")
-                try closure(.unknown(msg))
+                return .unknown(msg)
             }
         }
     }

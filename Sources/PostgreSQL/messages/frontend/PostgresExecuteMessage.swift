@@ -21,18 +21,17 @@ public struct PostgresExecuteMessage: PostgresExecuteMessageProtocol {
 // MARK: Payload
 extension PostgresExecuteMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try name.withUTF8 { nameBuffer in
+    public mutating func payload() -> ByteBuffer {
+        return name.withUTF8 { nameBuffer in
             let capacity = 10 + nameBuffer.count
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                var i = 0
-                buffer.writePostgresMessageHeader(type: .E, capacity: capacity, to: &i)
-                buffer.copyBuffer(nameBuffer, to: &i)
-                buffer[i] = 0
-                i += 1
-                buffer.writeIntBigEndian(maximumReturnedRows, to: &i)
-                try closure(buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            var i = 0
+            buffer.writePostgresMessageHeader(type: .E, capacity: capacity, to: &i)
+            buffer.copyBuffer(nameBuffer, to: &i)
+            buffer[i] = 0
+            i += 1
+            buffer.writeIntBigEndian(maximumReturnedRows, to: &i)
+            return buffer
         }
     }
 }
@@ -40,10 +39,10 @@ extension PostgresExecuteMessage {
 // MARK: Write
 extension PostgresExecuteMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

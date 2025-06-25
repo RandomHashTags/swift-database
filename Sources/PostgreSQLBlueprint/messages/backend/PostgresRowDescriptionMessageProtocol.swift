@@ -4,5 +4,5 @@ public protocol PostgresRowDescriptionMessageProtocol: PostgresBackendMessagePro
     func decode<T: PostgresDataRowDecodable, Connection: PostgresConnectionProtocol & ~Copyable>(
         on connection: inout Connection,
         as decodable: T.Type
-    ) throws -> [T?]
+    ) async throws -> [T?]
 }

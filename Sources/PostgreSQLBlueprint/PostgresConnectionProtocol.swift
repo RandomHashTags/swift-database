@@ -5,16 +5,16 @@ import SwiftDatabaseBlueprint
 
 public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQueryableProtocol, ~Copyable where RawMessage == PostgresRawMessage, QueryMessage: PostgresQueryMessageProtocol {
     @inlinable
-    func readMessage(_ closure: (RawMessage) throws -> Void) throws
+    func readMessage() async throws -> RawMessage
 
     @inlinable
-    func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) throws
+    func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) async throws
 
 
     @inlinable
     mutating func waitUntilReadyForQuery(
         _ onMessage: (PostgresRawMessage) throws -> Void
-    ) throws
+    ) async throws
 
     mutating func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
         _ statement: inout T
@@ -24,40 +24,29 @@ public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQuery
 // MARK: Read message
 extension PostgresConnectionProtocol {
     @inlinable
-    public func readMessage(_ closure: (RawMessage) throws -> Void) throws {
-        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 5, { headerBuffer in
-            let received = receive(baseAddress: headerBuffer.baseAddress!, length: 5)
-            guard received == 5 else {
-                throw PostgresError.readMessage("received (\(received)) != 5")
-            }
-            let type = headerBuffer[0]
-            let length:Int32 = headerBuffer.loadUnalignedIntBigEndian(offset: 1)
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: Int(length), { buffer in
-                var i = 0
-                withUnsafeBytes(of: length, {
-                    $0.forEach {
-                        buffer[i] = $0
-                        i += 1
-                    }
-                })
-                _ = receive(baseAddress: buffer.baseAddress! + i, length: Int(length) - i)
-                #if DEBUG
-                logger.info("Received message of type \(type) with body of length \(length)")
-                #endif
-                try closure(RawMessage(type: type, body: buffer))
-            })
-        })
+    public func readMessage() async throws -> RawMessage {
+        let headerBuffer = await receive(length: 5)
+        guard headerBuffer.count == 5 else {
+            throw PostgresError.readMessage("headerBuffer.count (\(headerBuffer.count)) != 5")
+        }
+        let type = headerBuffer[0]
+        let length:Int32 = headerBuffer.loadUnalignedIntBigEndian(offset: 1) - 4
+        let body = await receive(length: Int(length))
+        #if DEBUG
+        logger.info("Received message of type \(type) with body of length \(length)")
+        #endif
+        return RawMessage(type: type, bodyCount: length, body: body)
     }
 }
 
 // MARK: Send message
 extension PostgresConnectionProtocol {
     @inlinable
-    public func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) throws {
+    public func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) async throws {
         #if DEBUG
         logger.info("Sending message: \(message)")
         #endif
-        try message.write(to: self)
+        try await message.write(to: self)
     }
 }
 

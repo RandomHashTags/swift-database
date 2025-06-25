@@ -25,14 +25,13 @@ public struct PostgresNotificationResponseMessage: PostgresNoDataMessageProtocol
 extension PostgresNotificationResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .A else {
             throw PostgresError.notificationResponse("message type != .A")
         }
-        let processID:Int32 = message.body.loadUnalignedInt(offset: 4)
-        var offset = 8
+        let processID:Int32 = message.body.loadUnalignedInt()
+        var offset = 4
         guard let (channel, channelLength) = message.body.loadNullTerminatedStringBigEndian(offset: offset) else {
             throw PostgresError.notificationResponse("failed to load channel string from message body after index \(offset)")
         }
@@ -40,17 +39,17 @@ extension PostgresNotificationResponseMessage {
         guard let (payload, _) = message.body.loadNullTerminatedStringBigEndian(offset: offset) else {
             throw PostgresError.notificationResponse("failed to load payload string from message body after index \(offset)")
         }
-        try closure(.init(processID: processID, channel: channel, payload: payload))
+        return .init(processID: processID, channel: channel, payload: payload)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func notificationResponse(logger: Logger, _ closure: (consuming PostgresNotificationResponseMessage) throws -> Void) throws {
+    public func notificationResponse(logger: Logger) throws -> PostgresNotificationResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresNotificationResponseMessage")
         #endif
-        try PostgresNotificationResponseMessage.parse(message: self, closure)
+        return try PostgresNotificationResponseMessage.parse(message: self)
     }
 }

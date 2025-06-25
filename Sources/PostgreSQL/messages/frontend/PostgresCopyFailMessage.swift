@@ -16,16 +16,15 @@ public struct PostgresCopyFailMessage: PostgresCopyFailMessageProtocol {
 // MARK: Payload
 extension PostgresCopyFailMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
-        try reason.withUTF8 { reasonBuffer in
+    public mutating func payload() -> ByteBuffer {
+        return reason.withUTF8 { reasonBuffer in
             let capacity = 2 + reasonBuffer.count
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                var i = 0
-                buffer.writePostgresMessageHeader(type: .f, capacity: capacity, to: &i)
-                buffer.copyBuffer(reasonBuffer, to: &i)
-                buffer[i] = 0
-                try closure(buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            var i = 0
+            buffer.writePostgresMessageHeader(type: .f, capacity: capacity, to: &i)
+            buffer.copyBuffer(reasonBuffer, to: &i)
+            buffer[i] = 0
+            return buffer
         }
     }
 }
@@ -33,10 +32,10 @@ extension PostgresCopyFailMessage {
 // MARK: Write
 extension PostgresCopyFailMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

@@ -13,23 +13,22 @@ public struct PostgresTerminateMessage: PostgresTerminateMessageProtocol {
 // MARK: Payload
 extension PostgresTerminateMessage {
     @inlinable
-    public mutating func payload(_ closure: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
+    public mutating func payload() -> ByteBuffer {
         let capacity = 5
-        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-            var i = 0
-            buffer.writePostgresMessageHeader(type: .X, capacity: capacity, to: &i)
-            try closure(buffer)
-        })
+        let buffer = ByteBuffer(capacity: capacity)
+        var i = 0
+        buffer.writePostgresMessageHeader(type: .X, capacity: capacity, to: &i)
+        return buffer
     }
 }
 
 // MARK: Write
 extension PostgresTerminateMessage {
     @inlinable
-    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(to connection: borrowing Connection) throws {
-        try payload {
-            try connection.writeBuffer($0.baseAddress!, length: $0.count)
-        }
+    public mutating func write<Connection: PostgresConnectionProtocol & ~Copyable>(
+        to connection: borrowing Connection
+    ) async throws {
+        try await connection.writeBuffer(payload())
     }
 }
 

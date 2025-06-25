@@ -17,15 +17,14 @@ public struct PostgresNoticeResponseMessage: PostgresNoticeResponseMessageProtoc
 extension PostgresNoticeResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .N else {
             throw PostgresError.noticeResponse("message type != .N")
         }
         var fields = [String]()
-        let length:Int32 = message.body.loadUnalignedIntBigEndian() - 4
-        var startIndex = 4
+        let length:Int32 = message.bodyCount
+        var startIndex = 0
         while startIndex < length {
             let code:UInt8 = message.body.loadUnalignedInt(offset: startIndex)
             startIndex += 1
@@ -39,17 +38,17 @@ extension PostgresNoticeResponseMessage {
                 startIndex += length
             }
         }
-        try closure(.init(fields: fields))
+        return .init(fields: fields)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func noticeResponse(logger: Logger, _ closure: (consuming PostgresNoticeResponseMessage) throws -> Void) throws {
+    public func noticeResponse(logger: Logger) throws -> PostgresNoticeResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresNoticeResponseMessage")
         #endif
-        try PostgresNoticeResponseMessage.parse(message: self, closure)
+        return try PostgresNoticeResponseMessage.parse(message: self)
     }
 }

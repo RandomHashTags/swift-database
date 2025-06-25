@@ -19,34 +19,33 @@ public struct PostgresCopyOutResponseMessage: PostgresCopyOutResponseMessageProt
 extension PostgresCopyOutResponseMessage {
     @inlinable
     public static func parse(
-        message: PostgresRawMessage,
-        _ closure: (consuming Self) throws -> Void
-    ) throws {
+        message: PostgresRawMessage
+    ) throws -> Self {
         guard message.type == .H else {
             throw PostgresError.copyOutResponse("message type != .H")
         }
-        let format:Int8 = message.body.loadUnalignedIntBigEndian(offset: 4)
-        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian(offset: 5)
+        let format:Int8 = message.body.loadUnalignedIntBigEndian()
+        let numberOfColumns:Int16 = message.body.loadUnalignedIntBigEndian(offset: 1)
         var columnFormatCodes:[Int16] = []
         if numberOfColumns > 0 {
             columnFormatCodes.reserveCapacity(Int(numberOfColumns))
-            var offset = 7
+            var offset = 3
             for _ in 0..<numberOfColumns {
                 columnFormatCodes.append(message.body.loadUnalignedIntBigEndian(offset: offset))
                 offset += 2
             }
         }
-        try closure(.init(format: format, columnFormatCodes: columnFormatCodes))
+        return .init(format: format, columnFormatCodes: columnFormatCodes)
     }
 }
 
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public func copyOutResponse(logger: Logger, _ closure: (consuming PostgresCopyOutResponseMessage) throws -> Void) throws {
+    public func copyOutResponse(logger: Logger) throws -> PostgresCopyOutResponseMessage {
         #if DEBUG
         logger.info("Parsing PostgresRawMessage as PostgresCopyOutResponseMessage")
         #endif
-        try PostgresCopyOutResponseMessage.parse(message: self, closure)
+        return try PostgresCopyOutResponseMessage.parse(message: self)
     }
 }
