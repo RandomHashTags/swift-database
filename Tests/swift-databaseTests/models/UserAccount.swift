@@ -18,7 +18,6 @@ import SwiftDatabaseBlueprint
     ],
     revisions: [
         .init(
-            version: (0, 0, 1),
             addedFields: [
                 .init(
                     name: "id",
@@ -46,7 +45,6 @@ import SwiftDatabaseBlueprint
             removedFields: ["loop"]
         ),
         .init(
-            version: (0, 0, 2),
             addedFields: [
                 .init(
                     name: "test2",
@@ -56,7 +54,6 @@ import SwiftDatabaseBlueprint
             ]
         )/*,
         .init(
-            version: (0, 0, 3),
             removedFields: ["test2"]
         )*/
     ]

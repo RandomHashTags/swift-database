@@ -57,7 +57,10 @@ extension ModelMacro: ExtensionMacro {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
                     }
                 case "revisions":
-                    revisions = (child.expression.array?.elements.compactMap({ ModelRevision.parse(context: context, expr: $0.expression) }) ?? []).sorted(by: { $0.version < $1.version })
+                    var version = 0
+                    revisions = child.expression.array?.elements.compactMap({
+                        ModelRevision.parse(context: context, expr: $0.expression, version: &version)
+                    }) ?? []
                 case "selectFilters":
                     if let array = child.expression.array?.elements {
                         for element in array {
@@ -306,7 +309,7 @@ extension ModelCondition.Value {
 extension ModelRevision {
     struct Compiled {
         let expr:ExprSyntax
-        let version:(major: Int, minor: Int, patch: Int)
+        let version:Int
         let addedFields:[Field.Compiled]
         let updatedFields:[Field.Compiled]
         let renamedFields:[(expr: ExprSyntax, from: String, to: String)]
@@ -314,30 +317,19 @@ extension ModelRevision {
     }
     static func parse(
         context: some MacroExpansionContext,
-        expr: ExprSyntax
+        expr: ExprSyntax,
+        version: inout Int
     ) -> Compiled? {
         guard let functionCall = expr.functionCall else {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
-        var version:(major: Int, minor: Int, patch: Int) = (0, 0, 0)
         var addedFields = [ModelRevision.Field.Compiled]()
         var updatedFields = [ModelRevision.Field.Compiled]()
         var renamedFields = [(ExprSyntax, String, String)]()
         var removedFields = [(expr: ExprSyntax, name: String)]()
         for argument in functionCall.arguments {
             switch argument.label?.text {
-            case "version":
-                if let tuple = argument.expression.tuple?.elements {
-                    for (i, element) in tuple.enumerated() {
-                        switch i {
-                        case 0: version.major = element.expression.integer()!
-                        case 1: version.minor = element.expression.integer()!
-                        case 2: version.patch = element.expression.integer()!
-                        default: break
-                        }
-                    }
-                }
             case "addedFields":
                 addedFields = parseDictionaryString(context: context, expr: argument.expression)
             case "updatedFields":
@@ -359,6 +351,7 @@ extension ModelRevision {
                 break
             }
         }
+        version += 1
         return .init(
             expr: expr,
             version: version,

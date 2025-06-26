@@ -15,7 +15,6 @@ import SwiftDatabaseBlueprint
     table: "user_comments",
     revisions: [
         .init(
-            version: (0, 0, 1),
             addedFields: [
                 .init(
                     name: "id",
@@ -38,7 +37,6 @@ import SwiftDatabaseBlueprint
             ]
         ),
         .init(
-            version: (0, 0, 2),
             updatedFields: [
                 .init(
                     name: "content",
@@ -47,7 +45,6 @@ import SwiftDatabaseBlueprint
             ]
         ),
         .init(
-            version: (0, 0, 3),
             renamedFields: [
                 ("content", "text")
             ]

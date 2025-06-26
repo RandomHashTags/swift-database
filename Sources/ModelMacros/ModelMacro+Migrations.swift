@@ -76,8 +76,7 @@ extension ModelMacro {
         revision: ModelRevision.Compiled
     ) -> (name: String, sql: String) {
         let schemaTable = schema + "." + table
-        let version = revision.version
-        let incrementalName = "incremental_v\(version.0)_\(version.1)_\(version.2)"
+        let incrementalName = "incremental_v\(revision.version)"
         var incrementalSQL = ""
 
         if !revision.addedFields.isEmpty {
