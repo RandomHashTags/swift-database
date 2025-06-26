@@ -28,7 +28,7 @@ extension ModelMacro {
         var validFieldNames = [String]()
         for field in fields {
             if field.postgresDataType != nil {
-                validFieldNames.append(field.name)
+                validFieldNames.append(field.variableName)
             } else {
                 context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
             }
@@ -38,7 +38,7 @@ extension ModelMacro {
         let primaryKeyString:String
         if let primaryKeyFieldIndex = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
             let primaryKeyField = fields[primaryKeyFieldIndex]
-            requireID = "let \(primaryKeyField.name) = try requireID()\n"
+            requireID = "let \(primaryKeyField.columnName) = try requireID()\n"
             if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
                 primaryKeyString = ""
                 validFieldNames.remove(at: primaryKeyFieldIndex)

@@ -31,7 +31,8 @@ import SwiftDatabaseBlueprint
                     postgresDataType: .timestampNoTimeZone(precision: 0)
                 ),
                 .init(
-                    name: "user",
+                    name: "user_id",
+                    variableName: "userID",
                     constraints: [.notNull, .references(schema: "public", table: "users", fieldName: "id")],
                     postgresDataType: .bigserial
                 ),
@@ -65,7 +66,7 @@ struct UserComment: Model {
     var created:Date
     var deleted:Date?
 
-    var user:UserAccount.IDValue
+    var userID:UserAccount.IDValue
 
     var text:String
 }

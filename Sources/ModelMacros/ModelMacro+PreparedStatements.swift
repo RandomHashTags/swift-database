@@ -34,7 +34,7 @@ extension ModelMacro {
     ) -> String {
         let schemaTable = schema + "." + table
         var preparedStatements = [PreparedStatement]()
-        let allFieldNamesJoined = fields.map { $0.name }.joined(separator: ", ")
+        let allFieldNamesJoined = fields.map { $0.columnName }.joined(separator: ", ")
         var insertFields = fields
         var primaryKeyField:ModelRevision.Field.Compiled! = nil
         if let primaryKeyFieldIndex = insertFields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
@@ -43,24 +43,24 @@ extension ModelMacro {
                 insertFields.remove(at: primaryKeyFieldIndex)
             }
         }
-        let insertFieldsJoined = insertFields.map { $0.name }.joined(separator: ", ")
+        let insertFieldsJoined = insertFields.map { $0.columnName }.joined(separator: ", ")
         let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
         preparedStatements.append(.init(name: "insert", parameters: insertFields, returningFields: [], sql: insertSQL))
 
         if let primaryKeyField {
             let updateSQL = "UPDATE \(schemaTable) SET " + insertFields.enumerated().map {
-                $0.element.name + " = $\($0.offset+2)"
-            }.joined(separator: ", ") + " WHERE \(primaryKeyField.name) = $1"
+                $0.element.columnName + " = $\($0.offset+2)"
+            }.joined(separator: ", ") + " WHERE \(primaryKeyField.columnName) = $1"
             preparedStatements.append(.init(name: "update", parameters: fields, returningFields: [], sql: updateSQL))
             
             for field in insertFields {
                 if field != primaryKeyField {
-                    let sql = "UPDATE \(schemaTable) SET \(field.name) = $2 WHERE \(primaryKeyField.name) = $1"
+                    let sql = "UPDATE \(schemaTable) SET \(field.columnName) = $2 WHERE \(primaryKeyField.columnName) = $1"
                     preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returningFields: [], sql: sql))
                 }
             }
 
-            let selectSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(primaryKeyField.name) = $1"
+            let selectSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(primaryKeyField.columnName) = $1"
             preparedStatements.append(.init(name: "select", parameters: [primaryKeyField], returningFields: fields, sql: selectSQL))
         }
         
@@ -71,19 +71,19 @@ extension ModelMacro {
         preparedStatements.append(.init(
             name: "selectAllWithLimitAndOffset",
             parameters: [
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), name: "limit", postgresDataType: .integer),
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), name: "offset", postgresDataType: .integer)
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), columnName: "limit", variableName: "", postgresDataType: .integer),
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), columnName: "offset", variableName: "", postgresDataType: .integer)
             ],
             returningFields: fields,
             sql: selectWithLimitAndOffsetSQL
         ))
         for field in fields {
-            let sql = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(field.name) = $1"
+            let sql = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(field.columnName) = $1"
             let name = field.formattedName
             preparedStatements.append(.init(
                 name: "selectAllWhere\(name)Equals",
                 parameters: [
-                    .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), name: field.name, postgresDataType: field.postgresDataType)
+                    .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), columnName: field.columnName, variableName: field.variableName, postgresDataType: field.postgresDataType)
                 ],
                 returningFields: fields, sql: sql
             ))
@@ -93,7 +93,7 @@ extension ModelMacro {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schemaTable) WHERE " + condition.sql
             var selectFieldsAndDataTypes = [ModelRevision.Field.Compiled]()
             for field in selectFields {
-                if let target = fields.first(where: { $0.name == field }) {
+                if let target = fields.first(where: { $0.columnName == field }) {
                     selectFieldsAndDataTypes.append(target)
                 } else {
                     // TODO: show compiler diagnostic

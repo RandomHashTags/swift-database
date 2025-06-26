@@ -9,17 +9,20 @@ import Foundation
 extension ModelRevision {
     public struct Field: Sendable {
         public let name:String
+        public let variableName:String
         public let constraints:[Constraint]
         public package(set) var postgresDataType:PostgresDataType?
         public let defaultValue:String?
 
         public init(
             name: String,
+            variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
             postgresDataType: PostgresDataType? = nil,
             defaultValue: String? = nil
         ) {
             self.name = name
+            self.variableName = variableName ?? name
             self.constraints = constraints
             self.postgresDataType = postgresDataType
             self.defaultValue = defaultValue
@@ -27,20 +30,34 @@ extension ModelRevision {
 
         public init(
             name: String,
+            variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
             postgresDataType: PostgresDataType? = nil,
             defaultValue: Bool
         ) {
-            self.init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue ? "true" : "false")
+            self.init(
+                name: name,
+                variableName: variableName,
+                constraints: constraints,
+                postgresDataType: postgresDataType,
+                defaultValue: defaultValue ? "true" : "false"
+            )
         }
 
         public init<T: FixedWidthInteger>(
             name: String,
+            variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
             postgresDataType: PostgresDataType? = nil,
             defaultValue: T
         ) {
-            self.init(name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: "\(defaultValue)")
+            self.init(
+                name: name,
+                variableName: variableName,
+                constraints: constraints,
+                postgresDataType: postgresDataType,
+                defaultValue: "\(defaultValue)"
+            )
         }
     }
 }
@@ -49,28 +66,44 @@ extension ModelRevision {
 extension ModelRevision.Field {
     public static func optional(
         name: String,
+        variableName: String? = nil,
         postgresDataType: PostgresDataType? = nil,
         defaultValue: String? = nil
     ) -> Self {
-        .init(name: name, constraints: [], postgresDataType: postgresDataType, defaultValue: defaultValue)
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: [],
+            postgresDataType: postgresDataType,
+            defaultValue: defaultValue
+        )
     }
     public static func required(
         name: String,
+        variableName: String? = nil,
         postgresDataType: PostgresDataType? = nil,
         defaultValue: String? = nil
     ) -> Self {
-        .init(name: name, constraints: [.notNull], postgresDataType: postgresDataType, defaultValue: defaultValue)
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: [.notNull],
+            postgresDataType: postgresDataType,
+            defaultValue: defaultValue
+        )
     }
 }
 
 extension ModelRevision.Field {
     public static func boolean(
         name: String,
+        variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
         defaultValue: Bool
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .boolean,
             defaultValue: defaultValue
@@ -81,11 +114,13 @@ extension ModelRevision.Field {
 extension ModelRevision.Field {
     public static func date(
         name: String,
+        variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
         defaultValue: String
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .date,
             defaultValue: defaultValue
@@ -94,12 +129,14 @@ extension ModelRevision.Field {
 
     public static func timestampWithTimeZone(
         name: String,
+        variableName: String? = nil,
         precision: UInt8 = 0,
         constraints: [Constraint] = [.notNull],
         defaultValue: String
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .timestampWithTimeZone(precision: precision),
             defaultValue: defaultValue
@@ -107,12 +144,14 @@ extension ModelRevision.Field {
     }
     public static func timestampNoTimeZone(
         name: String,
+        variableName: String? = nil,
         precision: UInt8 = 0,
         constraints: [Constraint] = [.notNull],
         defaultValue: String
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .timestampNoTimeZone(precision: precision),
             defaultValue: defaultValue
@@ -123,11 +162,13 @@ extension ModelRevision.Field {
 extension ModelRevision.Field {
     public static func int16(
         name: String,
+        variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
         defaultValue: Int16
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .smallint,
             defaultValue: defaultValue
@@ -135,11 +176,13 @@ extension ModelRevision.Field {
     }
     public static func int32(
         name: String,
+        variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
         defaultValue: Int32
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .integer,
             defaultValue: defaultValue
@@ -147,11 +190,13 @@ extension ModelRevision.Field {
     }
     public static func int64(
         name: String,
+        variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
         defaultValue: Int64
     ) -> Self {
         .init(
             name: name,
+            variableName: variableName,
             constraints: constraints,
             postgresDataType: .bigint,
             defaultValue: defaultValue

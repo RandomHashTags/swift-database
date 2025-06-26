@@ -39,23 +39,11 @@ extension ModelMacro: ExtensionMacro {
                         }
                     }
                 case "schema":
-                    if let literal = child.expression.stringLiteral {
-                        schema = literal.legalText(context: context)
-                    } else {
-                        context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
-                    }
+                    schema = child.expression.legalStringliteralText(context: context)
                 case "schemaAlias":
-                    if let literal = child.expression.stringLiteral {
-                        schemaAlias = literal.legalText(context: context)
-                    } else {
-                        context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
-                    }
+                    schemaAlias = child.expression.legalStringliteralText(context: context)
                 case "table":
-                    if let literal = child.expression.stringLiteral {
-                        initialTable = literal.legalText(context: context)
-                    } else {
-                        context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
-                    }
+                    initialTable = child.expression.legalStringliteralText(context: context)
                 case "revisions":
                     var previousTableName:String? = initialTable
                     var version = 0
@@ -76,13 +64,7 @@ extension ModelMacro: ExtensionMacro {
                                 for (i, t) in tuple.elements.enumerated() {
                                     switch i {
                                     case 0:
-                                        fields = t.expression.array?.elements.compactMap({
-                                            guard let literal = $0.expression.stringLiteral else {
-                                                context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: $0.expression))
-                                                return nil
-                                            }
-                                            return literal.legalText(context: context)
-                                        })
+                                        fields = t.expression.array?.elements.compactMap({ $0.expression.legalStringliteralText(context: context) })
                                     case 1:
                                         condition = ModelCondition.parse(context: context, expr: t.expression)
                                     default:
@@ -115,7 +97,7 @@ extension ModelMacro: ExtensionMacro {
             for revision in revisions {
                 let isInitial = revision.version == initialVersion
                 for field in revision.addedFields {
-                    if !latestFieldKeys.contains(field.name) {
+                    if !latestFieldKeys.contains(field.columnName) {
                         if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
                             context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
                             continue
@@ -125,17 +107,18 @@ extension ModelMacro: ExtensionMacro {
                         context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.fieldAlreadyExists()))
                         continue
                     }
-                    latestFieldKeys.insert(field.name)
+                    latestFieldKeys.insert(field.columnName)
                 }
                 for field in revision.updatedFields {
-                    if let index = latestFields.firstIndex(where: { $0.name == field.name }) {
+                    if let index = latestFields.firstIndex(where: { $0.columnName == field.columnName }) {
+                        latestFields[index].variableName = field.variableName
                         latestFields[index].postgresDataType = field.postgresDataType
                     } else {
                         context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldThatDoesntExist()))
                     }
                 }
                 for field in revision.removedFields {
-                    if let index = latestFields.firstIndex(where: { $0.name == field.name }) {
+                    if let index = latestFields.firstIndex(where: { $0.columnName == field.name }) {
                         latestFields.remove(at: index)
                         latestFieldKeys.remove(field.name)
                     } else {
@@ -143,9 +126,10 @@ extension ModelMacro: ExtensionMacro {
                     }
                 }
                 for field in revision.renamedFields {
-                    if let index = latestFields.firstIndex(where: { $0.name == field.from }) {
-                        if latestFields.firstIndex(where: { $0.name == field.to }) == nil {
-                            latestFields[index].name = field.to
+                    if let index = latestFields.firstIndex(where: { $0.columnName == field.from }) {
+                        if latestFields.firstIndex(where: { $0.columnName == field.to }) == nil {
+                            latestFields[index].columnName = field.to
+                            latestFields[index].variableName = field.to
                             latestFieldKeys.remove(field.from)
                             latestFieldKeys.insert(field.to)
                         } else {
@@ -202,7 +186,7 @@ extension ModelMacro {
         }
         for field in fields {
             if let dataType = field.postgresDataType?.swiftDataType {
-                safetyString += "\n        var \(field.name): KeyPath<\(structureName), \(dataType)\(field.isRequired ? "" : "?")> { \\\(structureName).\(field.name) }"
+                safetyString += "\n        var \(field.variableName): KeyPath<\(structureName), \(dataType)\(field.isRequired ? "" : "?")> { \\\(structureName).\(field.variableName) }"
             } else {
                 // TODO: show compiler diagnostic
             }
@@ -235,14 +219,15 @@ extension ModelCondition {
         var name:String? = nil
         var firstCondition:ModelCondition.Value? = nil
         var additionalConditions = [(joiningOperator: JoiningOperator, condition: Value)]()
-        for argument in functionCall.arguments {
-            switch argument.label?.text {
+        for arg in functionCall.arguments {
+            switch arg.label?.text {
             case "name":
-                name = argument.expression.stringLiteral?.legalText(context: context)
+                name = arg.expression.legalStringliteralText(context: context)
+            
             case "firstCondition":
-                firstCondition = ModelCondition.Value.parse(context: context, expr: argument.expression)
+                firstCondition = ModelCondition.Value.parse(context: context, expr: arg.expression)
             case "additionalConditions":
-                if let array = argument.expression.array?.elements {
+                if let array = arg.expression.array?.elements {
                     for element in array {
                         if let tuple = element.expression.tuple?.elements {
                             var joiningOperator:ModelCondition.JoiningOperator? = nil
@@ -285,24 +270,16 @@ extension ModelCondition.Value {
         var field:String? = nil
         var `operator`:ModelCondition.Operator? = nil
         var value:String? = nil
-        for argument in functionCall.arguments {
-            switch argument.label?.text {
+        for arg in functionCall.arguments {
+            switch arg.label?.text {
             case "field":
-                if let literal = argument.expression.stringLiteral {
-                    field = literal.legalText(context: context)
-                } else {
-                    context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: argument.expression))
-                }
+                field = arg.expression.legalStringliteralText(context: context)
             case "operator":
-                if let s = argument.expression.memberAccess?.declName.baseName.text {
+                if let s = arg.expression.memberAccess?.declName.baseName.text {
                     `operator` = ModelCondition.Operator(rawValue: s)
                 }
             case "value":
-                if let literal = argument.expression.stringLiteral {
-                    value = literal.legalText(context: context)
-                } else {
-                    context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: argument.expression))
-                }
+                value = arg.expression.legalStringliteralText(context: context)
             default:
                 break
             }
@@ -337,23 +314,21 @@ extension ModelRevision {
         var updatedFields = [ModelRevision.Field.Compiled]()
         var renamedFields = [(ExprSyntax, String, String)]()
         var removedFields = [(expr: ExprSyntax, name: String)]()
-        for argument in functionCall.arguments {
-            switch argument.label?.text {
+        for arg in functionCall.arguments {
+            switch arg.label?.text {
             case "newTableName":
-                previousTableName = argument.expression.legalStringliteralText(context: context)
+                previousTableName = arg.expression.legalStringliteralText(context: context)
             case "addedFields":
-                addedFields = parseDictionaryString(context: context, expr: argument.expression)
+                addedFields = parseDictionaryString(context: context, expr: arg.expression)
             case "updatedFields":
-                updatedFields = parseDictionaryString(context: context, expr: argument.expression)
+                updatedFields = parseDictionaryString(context: context, expr: arg.expression)
             case "renamedFields":
-                renamedFields = parseRenamedFields(context: context, expr: argument.expression)
+                renamedFields = parseRenamedFields(context: context, expr: arg.expression)
             case "removedFields":
-                if let values:[(ExprSyntax, String)] = argument.expression.array?.elements.compactMap({
-                    guard let literal = $0.expression.stringLiteral else {
-                        context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: $0.expression))
+                if let values:[(ExprSyntax, String)] = arg.expression.array?.elements.compactMap({
+                    guard let value = $0.expression.legalStringliteralText(context: context) else {
                         return nil
                     }
-                    guard let value = literal.legalText(context: context) else { return nil }
                     return ($0.expression, value)
                 }) {
                     removedFields = values
@@ -395,17 +370,12 @@ extension ModelRevision {
         expr: ExprSyntax
     ) -> [(ExprSyntax, String, String)] {
         return expr.array?.elements.compactMap({
-            guard let tuple = $0.expression.tuple?.elements else { return nil }
-            guard let fromLiteral = tuple.first?.expression.stringLiteral else {
-                context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: tuple.first?.expression ?? $0.expression))
+            guard let tuple = $0.expression.tuple?.elements,
+                let from = tuple.first?.expression.legalStringliteralText(context: context),
+                let to = tuple.last?.expression.legalStringliteralText(context: context)
+            else {
                 return nil
             }
-            guard let from = fromLiteral.legalText(context: context) else { return nil }
-            guard let toLiteral = tuple.last?.expression.stringLiteral else {
-                context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: tuple.last?.expression ?? $0.expression))
-                return nil
-            }
-            guard let to = toLiteral.legalText(context: context) else { return nil }
             return ($0.expression, from, to)
         }) ?? []
     }
@@ -415,7 +385,8 @@ extension ModelRevision {
 extension ModelRevision.Field {
     struct Compiled: Equatable {
         let expr:ExprSyntax
-        var name:String
+        var columnName:String
+        var variableName:String
         var constraints:[Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
@@ -425,7 +396,7 @@ extension ModelRevision.Field {
         }
 
         var formattedName: String {
-            name[name.startIndex].uppercased() + name[name.index(after: name.startIndex)...]
+            columnName[columnName.startIndex].uppercased() + columnName[columnName.index(after: columnName.startIndex)...]
         }
     }
     static func parse(
@@ -436,18 +407,17 @@ extension ModelRevision.Field {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
-        var name:String? = nil
+        var columnName:String? = nil
+        var variableName:String? = nil
         var constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
-                if let literal = arg.expression.stringLiteral {
-                    name = literal.legalText(context: context)
-                } else {
-                    context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: arg.expression))
-                }
+                columnName = arg.expression.legalStringliteralText(context: context)
+            case "variableName":
+                variableName = arg.expression.legalStringliteralText(context: context)
             case "constraints":
                 if let array = arg.expression.array?.elements {
                     constraints = array.compactMap({ .parse(context: context, expr: $0.expression) })
@@ -469,8 +439,15 @@ extension ModelRevision.Field {
                 break
             }
         }
-        guard let name else { return nil }
-        return .init(expr: expr, name: name, constraints: constraints, postgresDataType: postgresDataType, defaultValue: defaultValue)
+        guard let columnName else { return nil }
+        return .init(
+            expr: expr,
+            columnName: columnName,
+            variableName: variableName ?? columnName,
+            constraints: constraints,
+            postgresDataType: postgresDataType,
+            defaultValue: defaultValue
+        )
     }
 }
 

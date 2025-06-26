@@ -41,7 +41,7 @@ extension ModelMacro {
                 return nil
             }
             let constraintsString = $0.constraints.map({ $0.name }).joined(separator: " ")
-            return $0.name + " " + dataType + (constraintsString.isEmpty ? "" : " " + constraintsString)
+            return $0.columnName + " " + dataType + (constraintsString.isEmpty ? "" : " " + constraintsString)
         }).joined(separator: ", ")
 
         if schema != "public" {
@@ -95,7 +95,7 @@ extension ModelMacro {
                     context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
                     return nil
                 }
-                var sql = "ADD COLUMN \(field.name) \(dataType.name)"
+                var sql = "ADD COLUMN \(field.columnName) \(dataType.name)"
                 if !field.constraints.isEmpty {
                     if field.defaultValue == nil && field.constraints.contains(.notNull) {
                         context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
@@ -115,7 +115,7 @@ extension ModelMacro {
             }
             incrementalSQL += revision.updatedFields.compactMap({
                 guard let dt = $0.postgresDataType else { return nil }
-                return "ALTER COLUMN \($0.name) SET DATA TYPE \(dt.name)"
+                return "ALTER COLUMN \($0.columnName) SET DATA TYPE \(dt.name)"
             }).joined(separator: ", ")
         }
         if !revision.renamedFields.isEmpty {
