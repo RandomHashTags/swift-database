@@ -26,7 +26,7 @@ extension Date: PostgresDataDecodable {
         guard values.count == 2, let (year, month, day) = tripleInt(values[0], separator: "-") else {
             return nil
         }
-        var timezone:TimeZone? = .current
+        var timezone:TimeZone? = .gmt
         let hour:Int
         let minute:Int
         let second:Int
