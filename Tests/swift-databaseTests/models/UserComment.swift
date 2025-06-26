@@ -12,7 +12,7 @@ import SwiftDatabaseBlueprint
 @Model(
     supportedDatabases: [.postgreSQL],
     schema: "public",
-    table: "user_comments",
+    table: "user_posts",
     revisions: [
         .init(
             addedFields: [
@@ -31,12 +31,18 @@ import SwiftDatabaseBlueprint
                     postgresDataType: .timestampNoTimeZone(precision: 0)
                 ),
                 .init(
+                    name: "user",
+                    constraints: [.notNull, .references(schema: "public", table: "users", fieldName: "id")],
+                    postgresDataType: .bigserial
+                ),
+                .init(
                     name: "content",
                     postgresDataType: .characterVarying(count: 255)
                 )
             ]
         ),
         .init(
+            newTableName: "user_comments",
             updatedFields: [
                 .init(
                     name: "content",
@@ -58,6 +64,8 @@ struct UserComment: Model {
 
     var created:Date
     var deleted:Date?
+
+    var user:UserAccount.IDValue
 
     var text:String
 }

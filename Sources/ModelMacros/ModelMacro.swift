@@ -24,7 +24,7 @@ extension ModelMacro: ExtensionMacro {
         var supportedDatabases = Set<DatabaseType>()
         var schema:String? = "public"
         var schemaAlias:String? = nil
-        var table:String? = nil
+        var initialTable:String? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
         var revisions = [ModelRevision.Compiled]()
         for arg in args {
@@ -52,14 +52,20 @@ extension ModelMacro: ExtensionMacro {
                     }
                 case "table":
                     if let literal = child.expression.stringLiteral {
-                        table = literal.legalText(context: context)
+                        initialTable = literal.legalText(context: context)
                     } else {
                         context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: child.expression))
                     }
                 case "revisions":
+                    var previousTableName:String? = initialTable
                     var version = 0
                     revisions = child.expression.array?.elements.compactMap({
-                        ModelRevision.parse(context: context, expr: $0.expression, version: &version)
+                        ModelRevision.parse(
+                            context: context,
+                            expr: $0.expression,
+                            previousTableName: &previousTableName,
+                            version: &version
+                        )
                     }) ?? []
                 case "selectFilters":
                     if let array = child.expression.array?.elements {
@@ -94,14 +100,16 @@ extension ModelMacro: ExtensionMacro {
                 }
             }
         }
-        guard let schema, let table else { return [] }
+        guard let schema, let initialTable else { return [] }
         var members = [String]()
         members.append("@inlinable public static var schema: String { \"\(schema)\" }")
         members.append("@inlinable public static var alias: String? { \(schemaAlias == nil ? "nil" : "\"\(schemaAlias!)\"") }")
-        members.append("@inlinable public static var table: String { \"\(table)\" }")
 
         var convenienceLogicString = ""
         if let initialVersion = revisions.first?.version {
+            let lastTableName = revisions.last!.tableName
+            members.append("@inlinable public static var table: String { \"\(lastTableName)\" }")
+
             var latestFields = [ModelRevision.Field.Compiled]()
             var latestFieldKeys = Set<String>()
             for revision in revisions {
@@ -158,7 +166,7 @@ extension ModelMacro: ExtensionMacro {
                 supportedDatabases: supportedDatabases,
                 schema: schema,
                 schemaAlias: schemaAlias,
-                table: table,
+                table: lastTableName,
                 selectFilters: selectFilters,
                 fields: latestFields
             ))
@@ -167,7 +175,6 @@ extension ModelMacro: ExtensionMacro {
                 supportedDatabases: supportedDatabases,
                 schema: schema,
                 schemaAlias: schemaAlias,
-                table: table,
                 revisions: revisions
             ))
             members.append(compileSafety(structureName: structureName, fields: latestFields))
@@ -309,6 +316,7 @@ extension ModelCondition.Value {
 extension ModelRevision {
     struct Compiled {
         let expr:ExprSyntax
+        let tableName:String
         let version:Int
         let addedFields:[Field.Compiled]
         let updatedFields:[Field.Compiled]
@@ -318,6 +326,7 @@ extension ModelRevision {
     static func parse(
         context: some MacroExpansionContext,
         expr: ExprSyntax,
+        previousTableName: inout String?,
         version: inout Int
     ) -> Compiled? {
         guard let functionCall = expr.functionCall else {
@@ -330,6 +339,8 @@ extension ModelRevision {
         var removedFields = [(expr: ExprSyntax, name: String)]()
         for argument in functionCall.arguments {
             switch argument.label?.text {
+            case "newTableName":
+                previousTableName = argument.expression.legalStringliteralText(context: context)
             case "addedFields":
                 addedFields = parseDictionaryString(context: context, expr: argument.expression)
             case "updatedFields":
@@ -351,9 +362,14 @@ extension ModelRevision {
                 break
             }
         }
+        guard let previousTableName else {
+            context.diagnose(DiagnosticMsg.revisionMissingTableName(expr: expr))
+            return nil
+        }
         version += 1
         return .init(
             expr: expr,
+            tableName: previousTableName,
             version: version,
             addedFields: addedFields,
             updatedFields: updatedFields,
@@ -465,22 +481,58 @@ extension ModelRevision.Field.Constraint {
         expr: ExprSyntax
     ) -> Self? {
         guard let member = expr.memberAccess else {
-            context.diagnose(DiagnosticMsg.expectedMemberAccessExpr(expr: expr))
+            if let functionCall = expr.functionCall {
+                switch functionCall.calledExpression.memberAccess?.declName.baseName.text {
+                case "check":
+                    var leftFieldName:String? = nil
+                    var rightFieldName:String? = nil
+                    for arg in functionCall.arguments {
+                        switch arg.label?.text {
+                        case "leftFieldName":
+                            leftFieldName = arg.expression.legalStringliteralText(context: context)
+                        case "rightFieldName":
+                            rightFieldName = arg.expression.legalStringliteralText(context: context)
+                        default:
+                            break
+                        }
+                    }
+                    guard let leftFieldName, let rightFieldName else { return nil }
+                    return .check(leftFieldName: leftFieldName, rightFieldName: rightFieldName)
+                case "references":
+                    var schema:String? = nil
+                    var table:String? = nil
+                    var fieldName:String? = nil
+                    for arg in functionCall.arguments {
+                        switch arg.label?.text {
+                        case "schema":
+                            schema = arg.expression.legalStringliteralText(context: context)
+                        case "table":
+                            table = arg.expression.legalStringliteralText(context: context)
+                        case "fieldName":
+                            fieldName = arg.expression.legalStringliteralText(context: context)
+                        default:
+                            break
+                        }
+                    }
+                    guard let schema, let table else { return nil }
+                    return .references(schema: schema, table: table, fieldName: fieldName)
+                default:
+                    context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))
+                    return nil
+                }
+            }
+            context.diagnose(DiagnosticMsg.expectedFunctionCallOrMemberAccessExpr(expr: expr))
             return nil
         }
         switch member.declName.baseName.text {
         case "notNull":
             return .notNull
-        case "check":
-            return nil // TODO: fix
         case "unique":
             return .unique
         case "nullsNotDistinct":
             return .nullsNotDistinct
         case "primaryKey":
             return .primaryKey
-        case "references":
-            return nil // TODO: fix
         default:
             context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))
             return nil

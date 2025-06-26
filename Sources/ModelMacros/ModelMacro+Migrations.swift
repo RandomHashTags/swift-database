@@ -9,14 +9,13 @@ extension ModelMacro {
         supportedDatabases: Set<DatabaseType>,
         schema: String,
         schemaAlias: String?,
-        table: String,
         revisions: [ModelRevision.Compiled]
     ) -> String {
         var migrationsString = ""
         if !revisions.isEmpty {
             if supportedDatabases.contains(.postgreSQL) {
                 migrationsString += "public enum PostgresMigrations {\n"
-                migrationsString += postgresMigrations(context: context, schema: schema, schemaAlias: schemaAlias, table: table, revisions: revisions)
+                migrationsString += postgresMigrations(context: context, schema: schema, schemaAlias: schemaAlias, revisions: revisions)
                 migrationsString += "\n    }"
             }
         }
@@ -30,10 +29,8 @@ extension ModelMacro {
         context: some MacroExpansionContext,
         schema: String,
         schemaAlias: String?,
-        table: String,
         revisions: [ModelRevision.Compiled]
     ) -> String {
-        let schemaTable = schema + "." + table
         var migrations = [(name: String, sql: String)]()
         var revisions = revisions
         let initialRevision = revisions.removeFirst()
@@ -52,11 +49,18 @@ extension ModelMacro {
             migrations.append(("createSchema", createSchemaSQL))
         }
 
-        let createTableSQL = "CREATE TABLE IF NOT EXISTS " + schemaTable + " (" + addedFieldsString + ");"
+        let createTableSQL = "CREATE TABLE IF NOT EXISTS " + schema + "." + initialRevision.tableName + " (" + addedFieldsString + ");"
         migrations.append(("createTable", createTableSQL))
 
+        var previousTableName = initialRevision.tableName
         for revision in revisions {
-            let (name, sql) = postgresIncrementalMigration(context: context, schema: schema, schemaAlias: schemaAlias, table: table, revision: revision)
+            let (name, sql) = postgresIncrementalMigration(
+                context: context,
+                schema: schema,
+                schemaAlias: schemaAlias,
+                previousTableName: &previousTableName,
+                revision: revision
+            )
             if !sql.isEmpty {
                 migrations.append((name, sql))
             } else {
@@ -72,14 +76,20 @@ extension ModelMacro {
         context: some MacroExpansionContext,
         schema: String,
         schemaAlias: String?,
-        table: String,
+        previousTableName: inout String,
         revision: ModelRevision.Compiled
     ) -> (name: String, sql: String) {
-        let schemaTable = schema + "." + table
+        let table = revision.tableName
         let incrementalName = "incremental_v\(revision.version)"
         var incrementalSQL = ""
-
+        
+        if previousTableName != table {
+            incrementalSQL += "RENAME TO " + table
+        }
         if !revision.addedFields.isEmpty {
+            if !incrementalSQL.isEmpty {
+                incrementalSQL += ", "
+            }
             incrementalSQL += revision.addedFields.compactMap({ field in
                 guard let dataType = field.postgresDataType else {
                     context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
@@ -105,7 +115,7 @@ extension ModelMacro {
             }
             incrementalSQL += revision.updatedFields.compactMap({
                 guard let dt = $0.postgresDataType else { return nil }
-                return "SET DATA TYPE \(dt.name)"
+                return "ALTER COLUMN \($0.name) SET DATA TYPE \(dt.name)"
             }).joined(separator: ", ")
         }
         if !revision.renamedFields.isEmpty {
@@ -125,7 +135,10 @@ extension ModelMacro {
             }).joined(separator: ", ")
         }
         if !incrementalSQL.isEmpty {
-            incrementalSQL = "ALTER TABLE \(schemaTable) " + incrementalSQL + ";"
+            incrementalSQL = "ALTER TABLE " + schema + "." + previousTableName + " " + incrementalSQL + ";"
+        }
+        if previousTableName != table {
+            previousTableName = table
         }
         return (incrementalName, incrementalSQL)
     }

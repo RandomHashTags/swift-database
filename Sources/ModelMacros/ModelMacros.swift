@@ -26,6 +26,16 @@ extension IntegerLiteralExprSyntax {
     package func integer<T: FixedWidthInteger>() -> T? { T(literal.text) }
 }
 
+extension ExprSyntax {
+    package func legalStringliteralText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
+        guard let stringLiteral = stringLiteral else {
+            context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: self))
+            return nil
+        }
+        return stringLiteral.legalText(context: context, isLegal)
+    }
+}
+
 extension StringLiteralExprSyntax {
     package var text: String { segments.description }
     package func legalText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {

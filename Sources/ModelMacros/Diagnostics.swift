@@ -26,6 +26,9 @@ extension DiagnosticMsg {
     static func expectedMemberAccessExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedMemberAccessExpr", message: "Expected member access expression"))
     }
+    static func expectedFunctionCallOrMemberAccessExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedFunctionCallOrMemberAccessExpr", message: "Expected function call or member access expression"))
+    }
     static func expectedStringLiteral(expr: some ExprSyntaxProtocol) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteral", message: "Expected string literal"))
     }
@@ -51,6 +54,9 @@ extension DiagnosticMsg {
     }
     static func failedToParseModelRevision() -> DiagnosticMsg {
         DiagnosticMsg(id: "failedToParseModelRevision", message: "Failed to parse ModelRevision")
+    }
+    static func revisionMissingTableName(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "revisionMissingTableName", message: "Revision doesn't have a table name"))
     }
 }
 
