@@ -27,7 +27,6 @@ extension ModelMacro: ExtensionMacro {
         var table:String? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
         var revisions = [ModelRevision.Compiled]()
-        var members = [String]()
         for arg in args {
             if let child = arg.as(LabeledExprSyntax.self) {
                 switch child.label?.text {
@@ -93,6 +92,7 @@ extension ModelMacro: ExtensionMacro {
             }
         }
         guard let schema, let table else { return [] }
+        var members = [String]()
         members.append("@inlinable public static var schema: String { \"\(schema)\" }")
         members.append("@inlinable public static var alias: String? { \(schemaAlias == nil ? "nil" : "\"\(schemaAlias!)\"") }")
         members.append("@inlinable public static var table: String { \"\(table)\" }")
@@ -126,11 +126,23 @@ extension ModelMacro: ExtensionMacro {
                 for field in revision.removedFields {
                     if let index = latestFields.firstIndex(where: { $0.name == field.name }) {
                         latestFields.remove(at: index)
+                        latestFieldKeys.remove(field.name)
                     } else {
                         context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRemoveFieldThatDoesntExist()))
-                        continue
                     }
-                    latestFieldKeys.remove(field.name)
+                }
+                for field in revision.renamedFields {
+                    if let index = latestFields.firstIndex(where: { $0.name == field.from }) {
+                        if latestFields.firstIndex(where: { $0.name == field.to }) == nil {
+                            latestFields[index].name = field.to
+                            latestFieldKeys.remove(field.from)
+                            latestFieldKeys.insert(field.to)
+                        } else {
+                            context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldToExistingField(from: field.from, to: field.to)))
+                        }
+                    } else {
+                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldThatDoesntExist()))
+                    }
                 }
                 // make sure a primary key exists after applying this revision
                 if latestFields.first(where: { $0.constraints.contains(.primaryKey) }) == nil {
@@ -297,6 +309,7 @@ extension ModelRevision {
         let version:(major: Int, minor: Int, patch: Int)
         let addedFields:[Field.Compiled]
         let updatedFields:[Field.Compiled]
+        let renamedFields:[(expr: ExprSyntax, from: String, to: String)]
         let removedFields:[(expr: ExprSyntax, name: String)]
     }
     static func parse(
@@ -310,6 +323,7 @@ extension ModelRevision {
         var version:(major: Int, minor: Int, patch: Int) = (0, 0, 0)
         var addedFields = [ModelRevision.Field.Compiled]()
         var updatedFields = [ModelRevision.Field.Compiled]()
+        var renamedFields = [(ExprSyntax, String, String)]()
         var removedFields = [(expr: ExprSyntax, name: String)]()
         for argument in functionCall.arguments {
             switch argument.label?.text {
@@ -328,6 +342,8 @@ extension ModelRevision {
                 addedFields = parseDictionaryString(context: context, expr: argument.expression)
             case "updatedFields":
                 updatedFields = parseDictionaryString(context: context, expr: argument.expression)
+            case "renamedFields":
+                renamedFields = parseRenamedFields(context: context, expr: argument.expression)
             case "removedFields":
                 if let values:[(ExprSyntax, String)] = argument.expression.array?.elements.compactMap({
                     guard let literal = $0.expression.stringLiteral else {
@@ -343,7 +359,14 @@ extension ModelRevision {
                 break
             }
         }
-        return .init(expr: expr, version: version, addedFields: addedFields, updatedFields: updatedFields, removedFields: removedFields)
+        return .init(
+            expr: expr,
+            version: version,
+            addedFields: addedFields,
+            updatedFields: updatedFields,
+            renamedFields: renamedFields,
+            removedFields: removedFields
+        )
     }
     private static func parseDictionaryString(
         context: some MacroExpansionContext,
@@ -358,13 +381,32 @@ extension ModelRevision {
         }
         return fields
     }
+    private static func parseRenamedFields(
+        context: some MacroExpansionContext,
+        expr: ExprSyntax
+    ) -> [(ExprSyntax, String, String)] {
+        return expr.array?.elements.compactMap({
+            guard let tuple = $0.expression.tuple?.elements else { return nil }
+            guard let fromLiteral = tuple.first?.expression.stringLiteral else {
+                context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: tuple.first?.expression ?? $0.expression))
+                return nil
+            }
+            guard let from = fromLiteral.legalText(context: context) else { return nil }
+            guard let toLiteral = tuple.last?.expression.stringLiteral else {
+                context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: tuple.last?.expression ?? $0.expression))
+                return nil
+            }
+            guard let to = toLiteral.legalText(context: context) else { return nil }
+            return ($0.expression, from, to)
+        }) ?? []
+    }
 }
 
 // MARK: Parse field
 extension ModelRevision.Field {
     struct Compiled: Equatable {
         let expr:ExprSyntax
-        let name:String
+        var name:String
         var constraints:[Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil

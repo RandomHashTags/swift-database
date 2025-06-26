@@ -79,31 +79,54 @@ extension ModelMacro {
         let version = revision.version
         let incrementalName = "incremental_v\(version.0)_\(version.1)_\(version.2)"
         var incrementalSQL = ""
-        for field in revision.addedFields {
-            if let dataType = field.postgresDataType {
-                var sql = "ALTER TABLE \(schemaTable) ADD COLUMN \(field.name) \(dataType.name)"
+
+        if !revision.addedFields.isEmpty {
+            incrementalSQL += revision.addedFields.compactMap({ field in
+                guard let dataType = field.postgresDataType else {
+                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
+                    return nil
+                }
+                var sql = "ADD COLUMN \(field.name) \(dataType.name)"
                 if !field.constraints.isEmpty {
                     if field.defaultValue == nil && field.constraints.contains(.notNull) {
                         context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
-                        continue
+                        return nil
                     }
                     sql += " " + field.constraints.map({ $0.name }).joined(separator: ", ")
                 }
                 if let defaultValue = field.defaultValue {
                     sql += " DEFAULT " + defaultValue
                 }
-                incrementalSQL += sql + ";"
-            } else {
-                context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
-                continue
+                return sql
+            }).joined(separator: ", ")
+        }
+        if !revision.updatedFields.isEmpty {
+            if !incrementalSQL.isEmpty {
+                incrementalSQL += ", "
             }
+            incrementalSQL += revision.updatedFields.compactMap({
+                guard let dt = $0.postgresDataType else { return nil }
+                return "SET DATA TYPE \(dt.name)"
+            }).joined(separator: ", ")
+        }
+        if !revision.renamedFields.isEmpty {
+            if !incrementalSQL.isEmpty {
+                incrementalSQL += ", "
+            }
+            incrementalSQL += revision.renamedFields.map({
+                "RENAME COLUMN \($0.from) TO \($0.to)"
+            }).joined(separator: ", ")
         }
         if !revision.removedFields.isEmpty {
             if !incrementalSQL.isEmpty {
-                incrementalSQL += " "
+                incrementalSQL += ", "
             }
-            incrementalSQL += revision.removedFields.map { "ALTER TABLE \(schemaTable) DROP COLUMN \($0.name)" }.joined(separator: "; ")
-            incrementalSQL += ";"
+            incrementalSQL += revision.removedFields.map({
+                "DROP COLUMN \($0.name)"
+            }).joined(separator: ", ")
+        }
+        if !incrementalSQL.isEmpty {
+            incrementalSQL = "ALTER TABLE \(schemaTable) " + incrementalSQL + ";"
         }
         return (incrementalName, incrementalSQL)
     }
