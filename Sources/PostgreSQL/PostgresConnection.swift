@@ -1,12 +1,16 @@
 
 #if canImport(Android)
 import Android
+#elseif canImport(Bionic)
+import Bionic
 #elseif canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
 #elseif canImport(Musl)
 import Musl
+#elseif canImport(WASILibc)
+import WASILibc
 #elseif canImport(Windows)
 import Windows
 #elseif canImport(WinSDK)
@@ -121,6 +125,15 @@ extension PostgresConnection {
         guard connectResult == 0 else {
             throw PostgresError.connectionFailure("errno=\(errno)")
         }
+        let flags = fcntl(_fileDescriptor, F_GETFL, 0)
+        guard flags != -1 else {
+            throw PostgresError.socketFailure("flags == -1 for file descriptor \(_fileDescriptor)")
+        }
+        let didNonblocking = fcntl(_fileDescriptor, F_SETFL, flags | O_NONBLOCK)
+        guard didNonblocking != -1 else {
+            throw PostgresError.socketFailure("failed to make file descriptor (\(_fileDescriptor)) nonblocking")
+        }
+
         _logger = Logger(label: "database.swift.postgresFileDescriptor\(fileDescriptor)")
     }
 }
@@ -173,7 +186,7 @@ extension PostgresConnection {
         #if DEBUG
         logger.notice("authentication successful")
         #endif
-        var _configuration:Configuration = _configuration
+        var _configuration = _configuration
         var backendKeyData:PostgresBackendKeyDataMessage? = nil
         try await waitUntilReadyForQuery { msg in
             switch msg.type {
@@ -211,7 +224,7 @@ extension PostgresConnection {
             let msg = try await readMessage()
             if msg.type == PostgresRawMessage.BackendType.readyForQuery.rawValue {
                 ready = true
-                return
+                break
             }
             try onMessage(msg)
         }

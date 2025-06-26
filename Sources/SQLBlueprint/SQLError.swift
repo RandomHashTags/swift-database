@@ -9,6 +9,11 @@ public struct SQLError: Error {
     }
 }
 
+// MARK: Receive
+extension SQLError {
+    @inlinable public static func receive(reason: String = "") -> SQLError { SQLError(identifier: "receiveError", reason: reason) }
+}
+
 // MARK: Send
 extension SQLError {
     @inlinable public static func send(reason: String = "") -> SQLError { SQLError(identifier: "sendError", reason: reason) }

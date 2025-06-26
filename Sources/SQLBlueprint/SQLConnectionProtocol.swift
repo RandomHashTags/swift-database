@@ -1,17 +1,22 @@
 
 #if canImport(Android)
 import Android
+#elseif canImport(Bionic)
+import Bionic
 #elseif canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(WASILibc)
+import WASILibc
 #elseif canImport(Windows)
 import Windows
 #elseif canImport(WinSDK)
 import WinSDK
 #endif
 
-import Dispatch
 import Logging
 import SwiftDatabaseBlueprint
 
@@ -49,12 +54,37 @@ extension SQLConnectionProtocol {
 // MARK: Receive
 extension SQLConnectionProtocol {
     @inlinable
-    public func receive(length: Int, flags: Int32 = 0) async -> ByteBuffer {
-        return await withCheckedContinuation { continutation in
-            DispatchQueue.global().async {
-                let buffer = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: length)
-                let r = recv(fileDescriptor, buffer.baseAddress, length, flags)
-                continutation.resume(returning: .init(buffer))
+    public func receive(length: Int, flags: Int32 = 0) async throws -> ByteBuffer {
+        let buffer = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: length)
+        while true {
+            let r = recv(fileDescriptor, buffer.baseAddress, length, flags)
+            if r > 0 {
+                return .init(buffer)
+            } else if r == 0 {
+                buffer.deallocate()
+                throw SQLError.receive(reason: "r == 0; end of file")
+            } else if errno == EAGAIN || errno == EWOULDBLOCK {
+                try await waitUntilReadable()
+                let _ = recv(fileDescriptor, buffer.baseAddress, length, flags)
+                return .init(buffer)
+            } else {
+                let err = errno
+                buffer.deallocate()
+                throw SQLError.receive(reason: "err=\(err)")
+            }
+        }
+    }
+    @inlinable
+    func waitUntilReadable() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            Task.detached {
+                var pfd = pollfd(fd: fileDescriptor, events: Int16(POLLIN), revents: 0)
+                let r = poll(&pfd, 1, -1)
+                if r > 0 {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: SQLError.receive(reason: "waitUntilReadable;r=\(r);errno=\(errno)"))
+                }
             }
         }
     }
@@ -68,7 +98,7 @@ extension SQLConnectionProtocol {
         var sent = 0
         while sent < length {
             if Task.isCancelled { return }
-            let result = await sendMultiplatform(buffer, offset: sent, length: length - sent)
+            let result = try await sendMultiplatform(buffer, offset: sent, length: length - sent)
             if result <= 0 {
                 throw SQLError.send(reason: "result (\(result)) <= 0")
             }
@@ -77,10 +107,32 @@ extension SQLConnectionProtocol {
     }
 
     @inlinable
-    public func sendMultiplatform(_ pointer: ByteBuffer, offset: Int, length: Int) async -> Int {
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global().async {
-                continuation.resume(returning: send(fileDescriptor, pointer.baseAddress! + offset, length, Int32(MSG_NOSIGNAL)))
+    public func sendMultiplatform(_ pointer: ByteBuffer, offset: Int, length: Int) async throws -> Int {
+        let ptr = pointer.baseAddress! + offset
+        while true {
+            let sent = send(fileDescriptor, ptr, length, Int32(MSG_NOSIGNAL))
+            if sent >= 0 {
+                return sent
+            } else if errno == EAGAIN || errno == EWOULDBLOCK {
+                try await waitUntilWriteable()
+                return send(fileDescriptor, ptr, length, Int32(MSG_NOSIGNAL))
+            } else {
+                throw SQLError.send(reason: "sentMultiplatform;sent=\(sent);errno=\(errno)")
+            }
+        }
+    }
+
+    @inlinable
+    func waitUntilWriteable() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            Task.detached {
+                var pfd = pollfd(fd: fileDescriptor, events: Int16(POLLOUT), revents: 0)
+                let r = poll(&pfd, 1, -1)
+                if r > 0 {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: SQLError.send(reason: "waitUntilWriteable;r=\(r);errno=\(errno)"))
+                }
             }
         }
     }

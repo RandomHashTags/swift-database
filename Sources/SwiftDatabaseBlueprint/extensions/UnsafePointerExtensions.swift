@@ -2,12 +2,16 @@
 
 #if canImport(Android)
 import Android
+#elseif canImport(Bionic)
+import Bionic
 #elseif canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
 #elseif canImport(Musl)
 import Musl
+#elseif canImport(WASILibc)
+import WASILibc
 #elseif canImport(Windows)
 import Windows
 #elseif canImport(WinSDK)
@@ -57,7 +61,7 @@ extension ByteBuffer {
     
     @inlinable
     public func copyBuffer(_ buffer: UnsafeMutablePointer<UInt8>, offset: Int = 0, count: Int, to index: inout Int) {
-        #if canImport(Android) || canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(WinSDK)
+        #if canImport(Android) || canImport(Bionic) || canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(WASILibc) || canImport(Windows) || canImport(WinSDK)
         memcpy(baseAddress! + index, buffer + offset, count)
         index += count
         #else
@@ -70,7 +74,7 @@ extension ByteBuffer {
 
     @inlinable
     public func copyBuffer(_ buffer: UnsafePointer<UInt8>, offset: Int = 0, count: Int, to index: inout Int) {
-        #if canImport(Android) || canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(WinSDK)
+        #if canImport(Android) || canImport(Bionic) || canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(WASILibc) || canImport(Windows) || canImport(WinSDK)
         memcpy(baseAddress! + index, buffer + offset, count)
         index += count
         #else
@@ -125,7 +129,7 @@ extension ByteBuffer {
             if self[i] == 0 {
                 let length = i - offset + 1
                 return (withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length, { buffer in
-                    memcpy(buffer.baseAddress!, self.baseAddress! + offset, i - offset + 1)
+                    memcpy(buffer.baseAddress!, self.baseAddress! + offset, i - offset + 1) // TODO: fix?
                     return String.init(cString: buffer.baseAddress!)
                 }), length)
             }

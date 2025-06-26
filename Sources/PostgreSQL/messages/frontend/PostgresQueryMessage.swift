@@ -119,33 +119,33 @@ extension PostgresQueryMessage {
             case PostgresRawMessage.BackendType.bindComplete.rawValue:
                 return try .bindComplete(msg.bindComplete(logger: logger))
             case PostgresRawMessage.BackendType.closeComplete.rawValue:
-                return .closeComplete(try msg.closeComplete(logger: logger))
+                return try .closeComplete(msg.closeComplete(logger: logger))
             case PostgresRawMessage.BackendType.commandComplete.rawValue:
-                return .commandComplete(try msg.commandComplete(logger: logger))
+                return try .commandComplete(msg.commandComplete(logger: logger))
             case PostgresRawMessage.BackendType.copyInResponse.rawValue:
-                return .copyInResponse(try msg.copyInResponse(logger: logger))
+                return try .copyInResponse(msg.copyInResponse(logger: logger))
             case PostgresRawMessage.BackendType.copyOutResponse.rawValue:
-                return .copyOutResponse(try msg.copyOutResponse(logger: logger))
+                return try .copyOutResponse(msg.copyOutResponse(logger: logger))
             case PostgresRawMessage.BackendType.dataRow.rawValue:
-                return .dataRow(try msg.dataRow(logger: logger))
+                return try .dataRow(msg.dataRow(logger: logger))
             case PostgresRawMessage.BackendType.emptyQueryResponse.rawValue:
-                return .emptyQueryResponse(try msg.emptyQueryResponse(logger: logger))
+                return try .emptyQueryResponse(msg.emptyQueryResponse(logger: logger))
             case PostgresRawMessage.BackendType.errorResponse.rawValue:
-                return .errorResponse(try msg.errorResponse(logger: logger))
+                return try .errorResponse(msg.errorResponse(logger: logger))
             case PostgresRawMessage.BackendType.functionCallResponse.rawValue:
-                return .functionCallResponse(try msg.functionCallResponse(logger: logger))
+                return try .functionCallResponse(msg.functionCallResponse(logger: logger))
             case PostgresRawMessage.BackendType.noData.rawValue:
-                return .noData(try msg.noData(logger: logger))
+                return try .noData(msg.noData(logger: logger))
             case PostgresRawMessage.BackendType.noticeResponse.rawValue:
-                return .noticeResponse(try msg.noticeResponse(logger: logger))
+                return try .noticeResponse(msg.noticeResponse(logger: logger))
             case PostgresRawMessage.BackendType.parseComplete.rawValue:
-                return .parseComplete(try msg.parseComplete(logger: logger))
+                return try .parseComplete(msg.parseComplete(logger: logger))
             case PostgresRawMessage.BackendType.portalSuspended.rawValue:
-                return .portalSuspended(try msg.portalSuspend(logger: logger))
+                return try .portalSuspended(msg.portalSuspend(logger: logger))
             case PostgresRawMessage.BackendType.readyForQuery.rawValue:
-                return .readyForQuery(try msg.readyForQuery(logger: logger))
+                return try .readyForQuery(msg.readyForQuery(logger: logger))
             case PostgresRawMessage.BackendType.rowDescription.rawValue:
-                return .rowDescription(try msg.rowDescription(logger: logger))
+                return try .rowDescription(msg.rowDescription(logger: logger))
             default:
                 logger.warning("unknown message type: \(msg.type)")
                 return .unknown(msg)

@@ -28,7 +28,7 @@ extension PostgresStartupMessage {
         var i = 0
         buffer.writeIntBigEndian(Int32(capacity), to: &i)
         buffer.writeIntBigEndian(protocolVersion, to: &i)
-        buffer.copyBuffer(bodyBuffer, to: &i)
+        buffer.copyBuffer(bodyBuffer.baseAddress!, count: bodyBuffer.count, to: &i)
         return buffer
     }
 

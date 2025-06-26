@@ -31,7 +31,7 @@ func example() async throws {
     print("preparedResponse=\(preparedResponse)")
     let response = try await UserAccount.PostgresPreparedStatements.selectAll.execute(on: &connection).requireNotError()
     if case let .rowDescription(msg) = response {
-        let decoded = try msg.decode(on: &connection, as: UserAccount.self)
+        let decoded = try await msg.decode(on: &connection, as: UserAccount.self)
         print("decoded=\(decoded)")
     }
 }

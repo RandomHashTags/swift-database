@@ -40,10 +40,9 @@ extension PostgresAuthenticationMessage {
             return .gss
         case 8:
             let capacity = Int(length - 4)
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                buffer.copyBuffer(message.body.baseAddress! + 8, count: capacity, to: 0)
-                return .gssContinue(data: buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            buffer.copyBuffer(message.body.baseAddress! + 4, count: capacity, to: 0)
+            return .gssContinue(data: buffer)
         case 9:
             return .sspi
         case 10:
@@ -61,16 +60,14 @@ extension PostgresAuthenticationMessage {
             return .sasl(names: names)
         case 11:
             let capacity = Int(length - 4)
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                buffer.copyBuffer(message.body, offset: 4, count: capacity, to: 0)
-                return .saslContinue(data: buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            buffer.copyBuffer(message.body.baseAddress! + 4, count: capacity, to: 0)
+            return .saslContinue(data: buffer)
         case 12:
             let capacity = Int(length - 4)
-            try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: capacity, { buffer in
-                buffer.copyBuffer(message.body, offset: 4, count: capacity, to: 0)
-                return .saslFinal(data: buffer)
-            })
+            let buffer = ByteBuffer(capacity: capacity)
+            buffer.copyBuffer(message.body.baseAddress! + 4, count: capacity, to: 0)
+            return .saslFinal(data: buffer)
         default:
             throw PostgresError.authentication("length=\(length);unhandled id: \(id)")
         }

@@ -25,13 +25,13 @@ public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQuery
 extension PostgresConnectionProtocol {
     @inlinable
     public func readMessage() async throws -> RawMessage {
-        let headerBuffer = await receive(length: 5)
+        let headerBuffer = try await receive(length: 5)
         guard headerBuffer.count == 5 else {
             throw PostgresError.readMessage("headerBuffer.count (\(headerBuffer.count)) != 5")
         }
         let type = headerBuffer[0]
         let length:Int32 = headerBuffer.loadUnalignedIntBigEndian(offset: 1) - 4
-        let body = await receive(length: Int(length))
+        let body = try await receive(length: Int(length))
         #if DEBUG
         logger.info("Received message of type \(type) with body of length \(length)")
         #endif

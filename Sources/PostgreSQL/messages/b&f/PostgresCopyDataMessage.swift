@@ -34,7 +34,7 @@ extension PostgresCopyDataMessage {
         let buffer = ByteBuffer(capacity: 5)
         var i = 0
         buffer.writePostgresMessageHeader(type: .d, capacity: 5, to: &i)
-        buffer.copyBuffer(data, to: &i)
+        buffer.copyBuffer(data.baseAddress!, count: data.count, to: &i)
         return buffer
     }
 }

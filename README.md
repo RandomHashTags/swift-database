@@ -10,6 +10,10 @@ We provide blueprint modules that lay out the API of the inner workings of each 
 
 ## Roadmap
 
+### Completed
+
+- [x] Nonblocking network i/o (**June 26, 2025**)
+
 ### WIP
 
 - [ ] Connection pool
@@ -29,7 +33,6 @@ We provide blueprint modules that lay out the API of the inner workings of each 
 - [ ] Pipeline support
 - [ ] Cache system
 - [ ] Data Streaming
-- [ ] Completely non-blocking
 - [ ] MicrosoftSQL
 - [ ] MongoSQL
 - [ ] NoSQL

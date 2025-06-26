@@ -1,7 +1,7 @@
 
 import SwiftDatabaseBlueprint
 
-public actor SQLConnectionPool<T: SQLConnectionProtocol> { // TODO: make noncopyable?
+public actor SQLConnectionPool<T: SQLConnectionProtocol> { // TODO: make noncopyable? | use epoll?
     let storage:DatabaseStorageMethod
     var maxConnections:Int
     var available:[T]
