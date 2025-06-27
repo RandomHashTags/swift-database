@@ -6,14 +6,14 @@ import SwiftSyntaxMacros
 extension ModelMacro {
     static func convenienceLogic(
         context: some MacroExpansionContext,
-        structureName: String,
+        construct: ModelConstruct,
         supportedDatabases: Set<DatabaseType>,
         schema: String,
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
-        var string = "extension \(structureName) {\n"
+        var string = "extension \(construct.name) {\n"
         if supportedDatabases.contains(.postgreSQL) {
-            string += postgresCreateOnConnection(context: context, fields: fields)
+            string += postgresCreateOnConnection(context: context, construct: construct, fields: fields)
         }
         string += "\n}"
         return string
@@ -23,6 +23,7 @@ extension ModelMacro {
 extension ModelMacro {
     private static func postgresCreateOnConnection(
         context: some MacroExpansionContext,
+        construct: ModelConstruct,
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
         var validFieldNames = [String]()
@@ -51,7 +52,8 @@ extension ModelMacro {
         }
 
         let parametersJoined = validFieldNames.joined(separator: ", ")
-        var string = "@discardableResult\n@inlinable\npublic mutating func create<T: PostgresQueryableProtocol & ~Copyable>(\n"
+        let mutationKeyword = construct.isStruct ? "mutating " : ""
+        var string = "@discardableResult\n@inlinable\npublic \(mutationKeyword)func create<T: PostgresQueryableProtocol & ~Copyable>(\n"
         string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += primaryKeyString
         string += "let response = try await PostgresPreparedStatements.insertReturning.execute(\non: &queryable,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
@@ -59,13 +61,13 @@ extension ModelMacro {
         if let msg = response.asRowDescription(),
                 let decoded = try await msg.decode(on: &queryable, as: Self.self).first,
                 let decoded {
-            self = decoded
+            \(construct.isStruct ? "self =" : "return") decoded
         }
         """
         string += "return self\n"
         string += "}\n\n"
 
-        string += "@discardableResult\n@inlinable\npublic mutating func update<T: PostgresQueryableProtocol & ~Copyable>(\n"
+        string += "@discardableResult\n@inlinable\npublic \(mutationKeyword)func update<T: PostgresQueryableProtocol & ~Copyable>(\n"
         string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += requireID
         string += "let response = try await PostgresPreparedStatements.update.execute(\non: &queryable,\nparameters: (\(allValidFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"

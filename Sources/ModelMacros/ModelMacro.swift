@@ -5,6 +5,15 @@ import SwiftSyntax
 import SwiftSyntaxMacros
 
 enum ModelMacro {
+    struct ModelConstruct {
+        let name:String
+
+        let isStruct:Bool
+
+        var isClass: Bool {
+            !isStruct
+        }
+    }
 }
 
 extension ModelMacro: ExtensionMacro {
@@ -15,9 +24,15 @@ extension ModelMacro: ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
-        guard let structureName = declaration.as(StructDeclSyntax.self)?.name.text ?? declaration.as(ClassDeclSyntax.self)?.name.text,
-                let args = node.arguments?.children(viewMode: .all)
-        else {
+        let construct:ModelConstruct
+        if let s = declaration.as(StructDeclSyntax.self) {
+            construct = .init(name: s.name.text, isStruct: true)
+        } else if let c = declaration.as(ClassDeclSyntax.self) {
+            construct = .init(name: c.name.text, isStruct: false)
+        } else {
+            return []
+        }
+        guard let args = node.arguments?.children(viewMode: .all) else {
             return []
         }
 
@@ -146,7 +161,6 @@ extension ModelMacro: ExtensionMacro {
             }
             members.append(preparedStatements(
                 context: context,
-                structureName: structureName,
                 supportedDatabases: supportedDatabases,
                 schema: schema,
                 schemaAlias: schemaAlias,
@@ -161,13 +175,13 @@ extension ModelMacro: ExtensionMacro {
                 schemaAlias: schemaAlias,
                 revisions: revisions
             ))
-            members.append(compileSafety(structureName: structureName, fields: latestFields))
+            members.append(compileSafety(construct: construct, fields: latestFields))
 
-            convenienceLogicString = convenienceLogic(context: context, structureName: structureName, supportedDatabases: supportedDatabases, schema: schema, fields: latestFields)
+            convenienceLogicString = convenienceLogic(context: context, construct: construct, supportedDatabases: supportedDatabases, schema: schema, fields: latestFields)
         }
         let content = members.map({ .init(stringLiteral: "    " + $0 + "\n") }).joined()
         return try [
-            .init(.init(stringLiteral: "extension \(structureName) {\n\(content)\n}")),
+            .init(.init(stringLiteral: "extension \(construct.name) {\n\(content)\n}")),
             .init(.init(stringLiteral: convenienceLogicString))
         ]
     }
@@ -176,9 +190,10 @@ extension ModelMacro: ExtensionMacro {
 // MARK: Compile safety
 extension ModelMacro {
     static func compileSafety(
-        structureName: String,
+        construct: ModelConstruct,
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
+        let constructName = construct.name
         var safetyString = "enum Safety {"
         var fields = fields
         if let pkIndex = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
@@ -186,7 +201,7 @@ extension ModelMacro {
         }
         for field in fields {
             if let dataType = field.postgresDataType?.swiftDataType {
-                safetyString += "\n        var \(field.variableName): KeyPath<\(structureName), \(dataType)\(field.isRequired ? "" : "?")> { \\\(structureName).\(field.variableName) }"
+                safetyString += "\n        var \(field.variableName): KeyPath<\(constructName), \(dataType)\(field.isRequired ? "" : "?")> { \\\(constructName).\(field.variableName) }"
             } else {
                 // TODO: show compiler diagnostic
             }

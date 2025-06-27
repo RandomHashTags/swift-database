@@ -21,7 +21,7 @@ func example() async throws {
     print("insertResponse=\(insertResponse)")
     var user = UserAccount(id: -1, created: Date.now, email: "imrandomhashtags@gmail.com", password: "test", test2: false)
     let before = user
-    let updatedUser = try await user.create(on: &connection)
+    user = try await user.create(on: &connection)
     print("user before=\(before)\nuser after=\(user)")
 
     /*let preparedResponse = try await UserAccount.PostgresPreparedStatements.selectAll.prepare(on: &connection).requireNotError()

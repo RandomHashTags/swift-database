@@ -7,7 +7,6 @@ import SwiftSyntaxMacros
 extension ModelMacro {
     static func preparedStatements(
         context: some MacroExpansionContext,
-        structureName: String,
         supportedDatabases: Set<DatabaseType>,
         schema: String,
         schemaAlias: String?,
