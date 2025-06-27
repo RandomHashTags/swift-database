@@ -6,7 +6,7 @@ import Foundation
 #endif
 
 import Testing
-import Model
+import Models
 import PostgreSQL
 
 @Test(.timeLimit(.minutes(1)))
@@ -16,14 +16,15 @@ func example() async throws {
     /*let migrationResponse = try await connection.query(unsafeSQL: UserAccount.PostgresMigrations.createTable).requireNotError()
     print("migrationResponse=\(migrationResponse)")
     let migration2Response = try await connection.query(unsafeSQL: UserAccount.PostgresMigrations.incremental_v0_0_2).requireNotError()
-    print("migration2Response=\(migration2Response)")
-    let insertResponse = try await UserAccount.PostgresPreparedStatements.insert.prepare(on: &connection).requireNotError()
+    print("migration2Response=\(migration2Response)")*/
+    let insertResponse = try await UserAccount.PostgresPreparedStatements.insertReturning.prepare(on: &connection).requireNotError()
     print("insertResponse=\(insertResponse)")
-    let user = UserAccount(id: -1, created: Date.now, email: "imrandomhashtags@gmail.com", password: "test", test2: false)
-    let userCreateResponse = try await user.create(on: &connection)
-    print("userCreateResponse=\(userCreateResponse)")*/
+    var user = UserAccount(id: -1, created: Date.now, email: "imrandomhashtags@gmail.com", password: "test", test2: false)
+    let before = user
+    let updatedUser = try await user.create(on: &connection)
+    print("user before=\(before)\nuser after=\(user)")
 
-    let preparedResponse = try await UserAccount.PostgresPreparedStatements.selectAll.prepare(on: &connection).requireNotError()
+    /*let preparedResponse = try await UserAccount.PostgresPreparedStatements.selectAll.prepare(on: &connection).requireNotError()
     print("preparedResponse=\(preparedResponse)")
     let response = try await UserAccount.PostgresPreparedStatements.selectAll.execute(on: &connection).requireNotError()
     if case let .rowDescription(msg) = response {
@@ -33,5 +34,5 @@ func example() async throws {
                 print("user id=\(user.id);created=\(user.created)")
             }
         }
-    }
+    }*/
 }

@@ -11,11 +11,6 @@ public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQuery
     func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) async throws
 
 
-    @inlinable
-    mutating func waitUntilReadyForQuery(
-        _ onMessage: (PostgresRawMessage) throws -> Void
-    ) async throws
-
     mutating func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
         _ statement: inout T
     ) async throws -> QueryMessage.ConcreteResponse

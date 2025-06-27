@@ -26,7 +26,6 @@ public protocol SQLConnectionProtocol: SQLQueryableProtocol, ~Copyable {
     init()
 
     var fileDescriptor: Int32 { get }
-    var logger: Logger { get }
 
     @inlinable
     mutating func establishConnection(storage: DatabaseStorageMethod) async throws

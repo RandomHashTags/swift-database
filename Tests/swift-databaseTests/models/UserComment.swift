@@ -5,7 +5,7 @@ import FoundationEssentials
 import Foundation
 #endif
 
-import Model
+import Models
 import PostgreSQLBlueprint
 import SwiftDatabaseBlueprint
 
@@ -58,7 +58,7 @@ import SwiftDatabaseBlueprint
         )
     ]
 )
-struct UserComment: Model {
+struct UserComment: PostgresModel {
     typealias IDValue = Int64
 
     var id:IDValue
@@ -71,7 +71,7 @@ struct UserComment: Model {
     var text:String
 }
 
-extension UserComment: PostgresDataRowDecodable {
+extension UserComment {
     static func postgresDecode(columns: [String?]) throws -> Self? {
         return nil
     }

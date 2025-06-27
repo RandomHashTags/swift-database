@@ -51,14 +51,21 @@ extension ModelMacro {
         }
 
         let parametersJoined = validFieldNames.joined(separator: ", ")
-        var string = "@discardableResult\n@inlinable\npublic func create<T: PostgresQueryableProtocol & ~Copyable>(\n"
+        var string = "@discardableResult\n@inlinable\npublic mutating func create<T: PostgresQueryableProtocol & ~Copyable>(\n"
         string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += primaryKeyString
-        string += "let response = try await PostgresPreparedStatements.insert.execute(\non: &queryable,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
+        string += "let response = try await PostgresPreparedStatements.insertReturning.execute(\non: &queryable,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
+        string += """
+        if let msg = response.asRowDescription(),
+                let decoded = try await msg.decode(on: &queryable, as: Self.self).first,
+                let decoded {
+            self = decoded
+        }
+        """
         string += "return self\n"
         string += "}\n\n"
 
-        string += "@discardableResult\n@inlinable\npublic func update<T: PostgresQueryableProtocol & ~Copyable>(\n"
+        string += "@discardableResult\n@inlinable\npublic mutating func update<T: PostgresQueryableProtocol & ~Copyable>(\n"
         string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += requireID
         string += "let response = try await PostgresPreparedStatements.update.execute(\non: &queryable,\nparameters: (\(allValidFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"

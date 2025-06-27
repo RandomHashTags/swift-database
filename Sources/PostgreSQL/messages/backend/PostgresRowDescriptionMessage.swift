@@ -95,19 +95,16 @@ extension PostgresRowDescriptionMessage {
 // MARK: Decode
 extension PostgresRowDescriptionMessage {
     @inlinable
-    public func decode<T: PostgresDataRowDecodable, Connection: PostgresConnectionProtocol & ~Copyable>(
-        on connection: inout Connection,
+    public func decode<Queryable: PostgresQueryableProtocol & ~Copyable, T: PostgresDataRowDecodable>(
+        on queryable: inout Queryable,
         as decodable: T.Type
     ) async throws -> [T?] {
-        let logger = connection.logger
+        let logger = queryable.logger
         var values = [T?]()
-        try await connection.waitUntilReadyForQuery { msg in
-            let response = try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
-            switch response {
-            case .dataRow(let dataRow):
+        try await queryable.waitUntilReadyForQuery { msg in
+            let response = try Queryable.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
+            if let dataRow = response.asDataRow() {
                 values.append(try dataRow.decode(as: decodable))
-            default:
-                break
             }
         }
         return values

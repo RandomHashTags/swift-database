@@ -69,6 +69,9 @@ extension PostgresQueryMessage {
         
         case unknown(PostgresRawMessage)
 
+        public typealias DataRowMessage = PostgresDataRowMessage
+        public typealias RowDescriptionMessage = PostgresRowDescriptionMessage
+
         @discardableResult
         @inlinable
         public func requireNotError() throws -> Self {
@@ -150,6 +153,22 @@ extension PostgresQueryMessage {
                 logger.warning("unknown message type: \(msg.type)")
                 return .unknown(msg)
             }
+        }
+
+        @inlinable
+        public func asDataRow() -> DataRowMessage? {
+            if case let .dataRow(msg) = self {
+                return msg
+            }
+            return nil
+        }
+
+        @inlinable
+        public func asRowDescription() -> RowDescriptionMessage? {
+            if case let .rowDescription(msg) = self {
+                return msg
+            }
+            return nil
         }
     }
 }

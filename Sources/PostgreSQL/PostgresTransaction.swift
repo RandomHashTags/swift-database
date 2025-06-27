@@ -15,6 +15,11 @@ public struct PostgresTransaction: PostgresTransactionProtocol, ~Copyable {
     ) {
         self.connection = connection
     }
+
+    @inlinable
+    public var logger: Logger {
+        connection.logger
+    }
 }
 
 // MARK: Begin

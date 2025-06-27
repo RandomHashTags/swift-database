@@ -36,16 +36,17 @@ extension ModelMacro {
         var preparedStatements = [PreparedStatement]()
         let allFieldNamesJoined = fields.map { $0.columnName }.joined(separator: ", ")
         var insertFields = fields
-        var primaryKeyField:ModelRevision.Field.Compiled! = nil
+        var primaryKeyField:ModelRevision.Field.Compiled? = nil
         if let primaryKeyFieldIndex = insertFields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
             primaryKeyField = insertFields[primaryKeyFieldIndex]
-            if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
+            if primaryKeyField!.postgresDataType == .serial || primaryKeyField!.postgresDataType == .bigserial {
                 insertFields.remove(at: primaryKeyFieldIndex)
             }
         }
         let insertFieldsJoined = insertFields.map { $0.columnName }.joined(separator: ", ")
         let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
         preparedStatements.append(.init(name: "insert", parameters: insertFields, returningFields: [], sql: insertSQL))
+        preparedStatements.append(.init(name: "insertReturning", parameters: insertFields, returningFields: fields, sql: insertSQL + " RETURNING \(allFieldNamesJoined)"))
 
         if let primaryKeyField {
             let updateSQL = "UPDATE \(schemaTable) SET " + insertFields.enumerated().map {

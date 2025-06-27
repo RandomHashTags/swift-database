@@ -89,7 +89,7 @@ let package = Package(
 
         // MARK: Model
         .target(
-            name: "Model",
+            name: "Models",
             dependencies: [
                 "ModelUtilities",
                 "ModelMacros"
@@ -112,7 +112,7 @@ let package = Package(
         .target(
             name: "SwiftDatabaseBlueprint",
             dependencies: [
-                "Model",
+                "Models",
                 "ModelUtilities",
                 "SwiftDatabaseMacros"
             ]
@@ -138,7 +138,7 @@ let package = Package(
         .target(
             name: "SQLBlueprint",
             dependencies: [
-                "Model",
+                "Models",
                 "SwiftDatabaseBlueprint",
                 .product(name: "Logging", package: "swift-log")
             ]
@@ -164,7 +164,7 @@ let package = Package(
         .target(
             name: "PostgreSQLBlueprint",
             dependencies: [
-                "Model",
+                "Models",
                 "SQLBlueprint",
                 "SwiftDatabaseBlueprint",
                 .product(name: "Logging", package: "swift-log")
@@ -174,7 +174,7 @@ let package = Package(
         .target(
             name: "PostgreSQL",
             dependencies: [
-                "Model",
+                "Models",
                 "SQLBlueprint",
                 "PostgreSQLBlueprint",
                 "SwiftDatabaseBlueprint",
@@ -193,7 +193,7 @@ let package = Package(
         .testTarget(
             name: "swift-databaseTests",
             dependencies: [
-                "Model",
+                "Models",
                 "SwiftDatabaseBlueprint",
                 "NoSQLBlueprint",
                 "MongoDBBlueprint",

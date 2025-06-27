@@ -5,7 +5,7 @@ import FoundationEssentials
 import Foundation
 #endif
 
-import Model
+import Models
 import PostgreSQLBlueprint
 import SwiftDatabaseBlueprint
 
@@ -58,7 +58,7 @@ import SwiftDatabaseBlueprint
         )*/
     ]
 )
-struct UserAccount: Model {
+struct UserAccount: PostgresModel {
     typealias IDValue = Int64
 
     var id:IDValue
@@ -72,7 +72,7 @@ struct UserAccount: Model {
     var test2:Bool
 }
 
-extension UserAccount: PostgresDataRowDecodable {
+extension UserAccount {
     static func postgresDecode(columns: [String?]) throws -> Self? {
         guard columns.count == 6 else { return nil }
         guard let id = IDValue(columns[0]!) else { return nil }

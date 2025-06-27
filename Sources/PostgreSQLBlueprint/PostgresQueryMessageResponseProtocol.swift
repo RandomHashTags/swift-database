@@ -3,6 +3,9 @@ import Logging
 import SQLBlueprint
 
 public protocol PostgresQueryMessageResponseProtocol: SQLQueryMessageResponseProtocol, ~Copyable {
+    associatedtype DataRowMessage: PostgresDataRowMessageProtocol
+    associatedtype RowDescriptionMessage: PostgresRowDescriptionMessageProtocol
+
     static func parse(
         logger: Logger,
         msg: PostgresRawMessage
@@ -12,4 +15,7 @@ public protocol PostgresQueryMessageResponseProtocol: SQLQueryMessageResponsePro
         on connection: inout T,
         _ onMessage: (PostgresRawMessage) throws -> Void
     ) async throws
+
+    func asDataRow() -> DataRowMessage?
+    func asRowDescription() -> RowDescriptionMessage?
 }
