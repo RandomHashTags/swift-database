@@ -31,25 +31,25 @@ extension ModelRevision.Field {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
-        var constraints:[ModelRevision.Field.Constraint] = [.notNull]
+        let constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         switch functionCall.calledExpression.memberAccess?.declName.baseName.text {
         case "init":
             break
         case "optional":
             if let inner = functionCall.arguments.first?.expression, var v = parse(context: context, expr: inner) {
-                constraints = v.constraints
                 let disallowed:Set<Constraint> = [.notNull, .primaryKey]
-                while let i = constraints.firstIndex(where: { disallowed.contains($0) }) {
-                    constraints.remove(at: i)
-                }
-                v.constraints = constraints
+                v.constraints.removeAll(where: { disallowed.contains($0) })
                 return v
             }
         case "bool":
             postgresDataType = .boolean
         case "date":
             postgresDataType = .date
+        case "double":
+            postgresDataType = .doublePrecision
+        case "float":
+            postgresDataType = .real
         case "int16":
             postgresDataType = .smallint
         case "int32":
@@ -86,10 +86,12 @@ extension ModelRevision.Field {
                 }
                 postgresDataType = .timestampWithTimeZone(precision: value)
             }
+        case "uuid":
+            postgresDataType = .uuid
         default:
             break
         }
-        return parseField(
+        return parse(
             context: context,
             expr: expr,
             functionCall: functionCall,
@@ -97,7 +99,7 @@ extension ModelRevision.Field {
             postgresDataType: postgresDataType
         )
     }
-    private static func parseField(
+    private static func parse(
         context: some MacroExpansionContext,
         expr: ExprSyntax,
         functionCall: FunctionCallExprSyntax,
@@ -106,8 +108,8 @@ extension ModelRevision.Field {
     ) -> Compiled? {
         var columnName:String? = nil
         var variableName:String? = nil
-        var constraints:[ModelRevision.Field.Constraint] = constraints
-        var postgresDataType:PostgresDataType? = postgresDataType
+        var constraints = constraints
+        var postgresDataType = postgresDataType
         var defaultValue:String? = nil
         var autoCreatePreparedStatements:Bool = true
         for arg in functionCall.arguments {

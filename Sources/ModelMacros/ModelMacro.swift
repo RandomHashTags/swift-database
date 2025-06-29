@@ -238,7 +238,6 @@ extension ModelCondition {
             switch arg.label?.text {
             case "name":
                 name = arg.expression.legalStringliteralText(context: context)
-            
             case "firstCondition":
                 firstCondition = ModelCondition.Value.parse(context: context, expr: arg.expression)
             case "additionalConditions":

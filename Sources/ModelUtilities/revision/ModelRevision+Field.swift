@@ -171,6 +171,56 @@ extension ModelRevision.Field {
 }
 
 extension ModelRevision.Field {
+    public static func double(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        defaultValue: Double? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        let dv:String?
+        if let defaultValue {
+            dv = "\(defaultValue)"
+        } else {
+            dv = nil
+        }
+        return .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .doublePrecision,
+            defaultValue: dv,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+}
+
+extension ModelRevision.Field {
+    public static func float(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        defaultValue: Float? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        let dv:String?
+        if let defaultValue {
+            dv = "\(defaultValue)"
+        } else {
+            dv = nil
+        }
+        return .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .real,
+            defaultValue: dv,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+}
+
+extension ModelRevision.Field {
     public static func int16(
         name: String,
         variableName: String? = nil,
@@ -251,6 +301,25 @@ extension ModelRevision.Field {
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .characterVarying(count: length),
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+}
+
+extension ModelRevision.Field {
+    public static func uuid(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        defaultValue: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .uuid,
             defaultValue: defaultValue,
             autoCreatePreparedStatements: autoCreatePreparedStatements
         )
