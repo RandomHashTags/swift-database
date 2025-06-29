@@ -47,8 +47,14 @@ import SwiftDatabaseBlueprint
             newTableName: "user_comments",
             updatedFields: [
                 .string(
-                    name: "content" // TODO: show compiler diagnostic about being unable to update field due to the field already being of same data type
+                    name: "content"
                 )
+            ],
+            renamedFields: [
+                ("dood", "dude")
+            ],
+            removedFields: [
+                "lol"
             ]
         ),
         .init(

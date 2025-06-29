@@ -107,57 +107,12 @@ extension ModelMacro: ExtensionMacro {
             let lastTableName = revisions.last!.tableName
             members.append("@inlinable public static var table: String { \"\(lastTableName)\" }")
 
-            var latestFields = [ModelRevision.Field.Compiled]()
-            var latestFieldKeys = Set<String>()
-            for revision in revisions {
-                let isInitial = revision.version == initialVersion
-                for field in revision.addedFields {
-                    if !latestFieldKeys.contains(field.columnName) {
-                        if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
-                            context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
-                            continue
-                        }
-                        latestFields.append(field)
-                    } else {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.fieldAlreadyExists()))
-                        continue
-                    }
-                    latestFieldKeys.insert(field.columnName)
-                }
-                for field in revision.updatedFields {
-                    if let index = latestFields.firstIndex(where: { $0.columnName == field.columnName }) {
-                        latestFields[index].variableName = field.variableName
-                        latestFields[index].postgresDataType = field.postgresDataType
-                    } else {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldThatDoesntExist()))
-                    }
-                }
-                for field in revision.removedFields {
-                    if let index = latestFields.firstIndex(where: { $0.columnName == field.name }) {
-                        latestFields.remove(at: index)
-                        latestFieldKeys.remove(field.name)
-                    } else {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRemoveFieldThatDoesntExist()))
-                    }
-                }
-                for field in revision.renamedFields {
-                    if let index = latestFields.firstIndex(where: { $0.columnName == field.from }) {
-                        if latestFields.firstIndex(where: { $0.columnName == field.to }) == nil {
-                            latestFields[index].columnName = field.to
-                            latestFields[index].variableName = field.to
-                            latestFieldKeys.remove(field.from)
-                            latestFieldKeys.insert(field.to)
-                        } else {
-                            context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldToExistingField(from: field.from, to: field.to)))
-                        }
-                    } else {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldThatDoesntExist()))
-                    }
-                }
-                // make sure a primary key exists after applying this revision
-                if latestFields.first(where: { $0.constraints.contains(.primaryKey) }) == nil {
-                    context.diagnose(Diagnostic(node: revision.expr, message: DiagnosticMsg.missingPrimaryKey()))
-                }
+            guard let latestFields = validateRevisions(
+                context: context,
+                initialVersion: initialVersion,
+                revisions: &revisions
+            ) else {
+                return []
             }
             members.append(preparedStatements(
                 context: context,
@@ -184,6 +139,90 @@ extension ModelMacro: ExtensionMacro {
             .init(.init(stringLiteral: "extension \(construct.name) {\n\(content)\n}")),
             .init(.init(stringLiteral: convenienceLogicString))
         ]
+    }
+}
+
+// MARK: Validate revisions
+extension ModelMacro {
+    static func validateRevisions(
+        context: some MacroExpansionContext,
+        initialVersion: Int,
+        revisions: inout [ModelRevision.Compiled]
+    ) -> [ModelRevision.Field.Compiled]? {
+        var latestFields = [ModelRevision.Field.Compiled]()
+        var latestFieldKeys = Set<String>()
+        for indice in revisions.indices {
+            let revision = revisions[indice]
+            let isInitial = revision.version == initialVersion
+            var validRevision = ModelRevision.Compiled(
+                expr: revision.expr,
+                tableName: revision.tableName,
+                version: revision.version,
+                addedFields: [],
+                updatedFields: [],
+                renamedFields: [],
+                removedFields: []
+            )
+            for field in revision.addedFields {
+                if !latestFieldKeys.contains(field.columnName) {
+                    if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
+                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
+                        return nil
+                    }
+                    latestFields.append(field)
+                } else {
+                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.fieldAlreadyExists()))
+                    return nil
+                }
+                latestFieldKeys.insert(field.columnName)
+                validRevision.addedFields.append(field)
+            }
+            for field in revision.updatedFields {
+                if let index = latestFields.firstIndex(where: { $0.columnName == field.columnName }) {
+                    if latestFields[index].postgresDataType == field.postgresDataType {
+                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldWithIdenticalDataType()))
+                    } else {
+                        latestFields[index].variableName = field.variableName
+                        latestFields[index].postgresDataType = field.postgresDataType
+                        validRevision.updatedFields.append(field)
+                    }
+                } else {
+                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldThatDoesntExist()))
+                }
+            }
+            for field in revision.removedFields {
+                if let index = latestFields.firstIndex(where: { $0.columnName == field.name }) {
+                    latestFields.remove(at: index)
+                    latestFieldKeys.remove(field.name)
+                    validRevision.removedFields.append(field)
+                } else {
+                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRemoveFieldThatDoesntExist()))
+                }
+            }
+            for field in revision.renamedFields {
+                if let index = latestFields.firstIndex(where: { $0.columnName == field.from }) {
+                    if latestFields.firstIndex(where: { $0.columnName == field.to }) == nil {
+                        latestFields[index].columnName = field.to
+                        latestFields[index].variableName = field.to
+                        latestFieldKeys.remove(field.from)
+                        latestFieldKeys.insert(field.to)
+                        validRevision.renamedFields.append(field)
+                    } else {
+                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldToExistingField(from: field.from, to: field.to)))
+                        return nil
+                    }
+                } else {
+                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldThatDoesntExist()))
+                }
+            }
+            // make sure a primary key exists after applying this revision
+            if latestFields.first(where: { $0.constraints.contains(.primaryKey) }) == nil {
+                context.diagnose(Diagnostic(node: revision.expr, message: DiagnosticMsg.missingPrimaryKey()))
+                return nil
+            }
+            revisions[indice] = validRevision
+        }
+        return latestFields
     }
 }
 
@@ -309,10 +348,10 @@ extension ModelRevision {
         let expr:ExprSyntax
         let tableName:String
         let version:Int
-        let addedFields:[Field.Compiled]
-        let updatedFields:[Field.Compiled]
-        let renamedFields:[(expr: ExprSyntax, from: String, to: String)]
-        let removedFields:[(expr: ExprSyntax, name: String)]
+        var addedFields:[Field.Compiled]
+        var updatedFields:[Field.Compiled]
+        var renamedFields:[(expr: ExprSyntax, from: String, to: String)]
+        var removedFields:[(expr: ExprSyntax, name: String)]
     }
     static func parse(
         context: some MacroExpansionContext,

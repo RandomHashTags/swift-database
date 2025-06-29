@@ -76,6 +76,9 @@ extension DiagnosticMsg {
     static func cannotUpdateFieldThatDoesntExist() -> DiagnosticMsg {
         DiagnosticMsg(id: "cannotUpdateFieldThatDoesntExist", message: "Field cannot be updated because it doesn't exist at this point", severity: .warning)
     }
+    static func cannotUpdateFieldWithIdenticalDataType() -> DiagnosticMsg {
+        DiagnosticMsg(id: "cannotUpdateFieldWithIdenticalDataType", message: "Field cannot be updated because the data types are identical at this point", severity: .warning)
+    }
     static func cannotRemoveFieldThatDoesntExist() -> DiagnosticMsg {
         DiagnosticMsg(id: "cannotRemoveFieldThatDoesntExist", message: "Field cannot be removed because it doesn't exist at this point", severity: .warning)
     }
@@ -83,7 +86,7 @@ extension DiagnosticMsg {
         DiagnosticMsg(id: "cannotRenameFieldThatDoesntExist", message: "Field cannot be renamed because it doesn't exist at this point", severity: .warning)
     }
     static func cannotRenameFieldToExistingField(from: String, to: String) -> DiagnosticMsg {
-        DiagnosticMsg(id: "cannotRenameFieldToExistingField", message: "Field '\(from)' cannot be renamed to '\(to)' because a field named '\(to)' already exists at this point", severity: .error)
+        DiagnosticMsg(id: "cannotRenameFieldToExistingField", message: "Field '\(from)' cannot be renamed to '\(to)' because a field named '\(to)' already exists at this point")
     }
 }
 
