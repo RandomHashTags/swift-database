@@ -21,14 +21,13 @@ import SwiftDatabaseBlueprint
                     constraints: [.primaryKey],
                     postgresDataType: .bigserial
                 ),
-                .init(
-                    name: "created",
-                    postgresDataType: .timestampNoTimeZone(precision: 0)
+                .timestampNoTimeZone(
+                    name: "created"
                 ),
-                .init(
-                    name: "deleted",
-                    constraints: [],
-                    postgresDataType: .timestampNoTimeZone(precision: 0)
+                .optional(
+                    .timestampNoTimeZone(
+                        name: "deleted"
+                    )
                 ),
                 .init(
                     name: "user_id",
@@ -36,18 +35,16 @@ import SwiftDatabaseBlueprint
                     constraints: [.notNull, .references(schema: "public", table: "users", fieldName: "id")],
                     postgresDataType: .bigserial
                 ),
-                .init(
-                    name: "content",
-                    postgresDataType: .characterVarying(count: 255)
+                .string(
+                    name: "content"
                 )
             ]
         ),
         .init(
             newTableName: "user_comments",
             updatedFields: [
-                .init(
-                    name: "content",
-                    postgresDataType: .text
+                .string(
+                    name: "content" // TODO: show compiler diagnostic about being unable to update field due to the field already being of same data type
                 )
             ]
         ),

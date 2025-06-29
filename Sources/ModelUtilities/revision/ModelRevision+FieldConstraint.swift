@@ -1,6 +1,6 @@
 
 extension ModelRevision.Field {
-    public enum Constraint: Sendable, Equatable {
+    public enum Constraint: Hashable, Sendable {
         case notNull
         case check(leftFieldName: String, rightFieldName: String)
         case unique

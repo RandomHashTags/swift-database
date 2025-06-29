@@ -24,33 +24,29 @@ import SwiftDatabaseBlueprint
                     constraints: [.primaryKey],
                     postgresDataType: .bigserial
                 ),
-                .init(
+                .timestampNoTimeZone(
                     name: "created",
-                    postgresDataType: .timestampNoTimeZone(precision: 0),
                     autoCreatePreparedStatements: false
                 ),
-                .init(
-                    name: "deleted",
-                    constraints: [],
-                    postgresDataType: .timestampNoTimeZone(precision: 0),
-                    autoCreatePreparedStatements: false
+                .optional(
+                    .timestampNoTimeZone(
+                        name: "deleted",
+                        autoCreatePreparedStatements: false
+                    )
                 ),
-                .init(
-                    name: "email",
-                    postgresDataType: .characterVarying(count: 255)
+                .string(
+                    name: "email"
                 ),
-                .init(
-                    name: "password",
-                    postgresDataType: .characterVarying(count: 255)
+                .string(
+                    name: "password"
                 )
             ],
             removedFields: ["loop"]
         ),
         .init(
             addedFields: [
-                .init(
+                .bool(
                     name: "test2",
-                    postgresDataType: .boolean,
                     defaultValue: false
                 )
             ]

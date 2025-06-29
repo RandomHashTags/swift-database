@@ -20,7 +20,7 @@ extension ModelRevision {
             name: String,
             variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
-            postgresDataType: PostgresDataType? = nil,
+            postgresDataType: PostgresDataType?,
             defaultValue: String? = nil,
             autoCreatePreparedStatements: Bool = true
         ) {
@@ -37,14 +37,16 @@ extension ModelRevision {
             variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
             postgresDataType: PostgresDataType? = nil,
-            defaultValue: Bool
+            defaultValue: Bool,
+            autoCreatePreparedStatements: Bool
         ) {
             self.init(
                 name: name,
                 variableName: variableName,
                 constraints: constraints,
                 postgresDataType: postgresDataType,
-                defaultValue: defaultValue ? "true" : "false"
+                defaultValue: defaultValue ? "true" : "false",
+                autoCreatePreparedStatements: autoCreatePreparedStatements
             )
         }
 
@@ -53,14 +55,22 @@ extension ModelRevision {
             variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
             postgresDataType: PostgresDataType? = nil,
-            defaultValue: T
+            defaultValue: T?,
+            autoCreatePreparedStatements: Bool
         ) {
+            let dv:String?
+            if let defaultValue {
+                dv = "\(defaultValue)"
+            } else {
+                dv = nil
+            }
             self.init(
                 name: name,
                 variableName: variableName,
                 constraints: constraints,
                 postgresDataType: postgresDataType,
-                defaultValue: "\(defaultValue)"
+                defaultValue: dv,
+                autoCreatePreparedStatements: autoCreatePreparedStatements
             )
         }
     }
@@ -69,48 +79,39 @@ extension ModelRevision {
 // MARK: Field convenience
 extension ModelRevision.Field {
     public static func optional(
-        name: String,
-        variableName: String? = nil,
-        postgresDataType: PostgresDataType? = nil,
-        defaultValue: String? = nil
+        _ field: ModelRevision.Field
     ) -> Self {
-        .init(
-            name: name,
-            variableName: variableName,
-            constraints: [],
-            postgresDataType: postgresDataType,
-            defaultValue: defaultValue
-        )
-    }
-    public static func required(
-        name: String,
-        variableName: String? = nil,
-        postgresDataType: PostgresDataType? = nil,
-        defaultValue: String? = nil
-    ) -> Self {
-        .init(
-            name: name,
-            variableName: variableName,
-            constraints: [.notNull],
-            postgresDataType: postgresDataType,
-            defaultValue: defaultValue
+        var constraints = field.constraints
+        let disallowed:Set<Constraint> = [.notNull, .primaryKey]
+        while let i = constraints.firstIndex(where: { disallowed.contains($0) }) {
+            constraints.remove(at: i)
+        }
+        return .init(
+            name: field.name,
+            variableName: field.variableName,
+            constraints: constraints,
+            postgresDataType: field.postgresDataType,
+            defaultValue: field.defaultValue,
+            autoCreatePreparedStatements: field.autoCreatePreparedStatements
         )
     }
 }
 
 extension ModelRevision.Field {
-    public static func boolean(
+    public static func bool(
         name: String,
         variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
-        defaultValue: Bool
+        defaultValue: Bool = false,
+        autoCreatePreparedStatements: Bool = true
     ) -> Self {
         .init(
             name: name,
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .boolean,
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
 }
@@ -120,45 +121,51 @@ extension ModelRevision.Field {
         name: String,
         variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
-        defaultValue: String
+        defaultValue: String,
+        autoCreatePreparedStatements: Bool = true
     ) -> Self {
         .init(
             name: name,
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .date,
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
 
-    public static func timestampWithTimeZone(
-        name: String,
-        variableName: String? = nil,
-        precision: UInt8 = 0,
-        constraints: [Constraint] = [.notNull],
-        defaultValue: String
-    ) -> Self {
-        .init(
-            name: name,
-            variableName: variableName,
-            constraints: constraints,
-            postgresDataType: .timestampWithTimeZone(precision: precision),
-            defaultValue: defaultValue
-        )
-    }
     public static func timestampNoTimeZone(
         name: String,
         variableName: String? = nil,
-        precision: UInt8 = 0,
         constraints: [Constraint] = [.notNull],
-        defaultValue: String
+        precision: UInt8 = 0,
+        defaultValue: String? = nil,
+        autoCreatePreparedStatements: Bool = true
     ) -> Self {
         .init(
             name: name,
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .timestampNoTimeZone(precision: precision),
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+    public static func timestampWithTimeZone(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        precision: UInt8 = 0,
+        defaultValue: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .timestampWithTimeZone(precision: precision),
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
 }
@@ -168,42 +175,84 @@ extension ModelRevision.Field {
         name: String,
         variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
-        defaultValue: Int16
+        defaultValue: Int16? = nil,
+        autoCreatePreparedStatements: Bool = true
     ) -> Self {
         .init(
             name: name,
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .smallint,
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
     public static func int32(
         name: String,
         variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
-        defaultValue: Int32
+        defaultValue: Int32? = nil,
+        autoCreatePreparedStatements: Bool = true
     ) -> Self {
         .init(
             name: name,
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .integer,
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
     public static func int64(
         name: String,
         variableName: String? = nil,
         constraints: [Constraint] = [.notNull],
-        defaultValue: Int64
+        defaultValue: Int64? = nil,
+        autoCreatePreparedStatements: Bool = true
     ) -> Self {
         .init(
             name: name,
             variableName: variableName,
             constraints: constraints,
             postgresDataType: .bigint,
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+}
+
+extension ModelRevision.Field {
+    public static func string(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        defaultValue: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .text,
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+    public static func string(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        length: UInt64,
+        defaultValue: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .characterVarying(count: length),
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
 }
