@@ -132,9 +132,32 @@ extension ModelRevision.Field {
                     postgresDataType = .init(rawValue: s)
                 }
             case "defaultValue":
-                defaultValue = arg.expression.stringLiteral?.legalText(context: context)
-                                ?? arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text
-                                ?? arg.expression.integerLiteral?.literal.text
+                if let s = arg.expression.stringLiteral?.legalText(context: context)
+                        ?? arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text
+                        ?? arg.expression.integerLiteral?.literal.text {
+                    defaultValue = s
+                } else if let s = arg.expression.functionCall?.calledExpression.memberAccess?.declName.baseName.text {
+                    switch s {
+                    case "sqlEpoch":
+                        defaultValue = "'epoch()'"
+                    case "sqlInfinity":
+                        defaultValue = "'infinity()'"
+                    case "sqlNegativeInfinity":
+                        defaultValue = "'-infinity()'"
+                    case "sqlNow":
+                        defaultValue = "'now()'"
+                    case "sqlToday":
+                        defaultValue = "'today()'"
+                    case "sqlTomorrow":
+                        defaultValue = "'tomorrow()'"
+                    case "sqlYesterday":
+                        defaultValue = "'yesterday()'"
+                    case "allballs":
+                        defaultValue = "'allballs()'"
+                    default:
+                        break
+                    }
+                }
             case "autoCreatePreparedStatements":
                 autoCreatePreparedStatements = arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text == "true"
             default:

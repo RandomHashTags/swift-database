@@ -21,8 +21,11 @@ import SwiftDatabaseBlueprint
                     constraints: [.primaryKey],
                     postgresDataType: .bigserial
                 ),
-                .timestampNoTimeZone(
-                    name: "created"
+                .optional(
+                    .timestampNoTimeZone(
+                        name: "created",
+                        defaultValue: .sqlNow()
+                    ),
                 ),
                 .optional(
                     .timestampNoTimeZone(
@@ -60,7 +63,7 @@ struct UserComment: PostgresModel {
 
     var id:IDValue
 
-    var created:Date
+    var created:Date?
     var deleted:Date?
 
     var userID:UserAccount.IDValue

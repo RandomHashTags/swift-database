@@ -41,7 +41,7 @@ extension ModelMacro {
                 return nil
             }
             let constraintsString = $0.constraints.map({ $0.name }).joined(separator: " ")
-            return $0.columnName + " " + dataType + (constraintsString.isEmpty ? "" : " " + constraintsString)
+            return $0.columnName + " " + dataType + (constraintsString.isEmpty ? "" : " " + constraintsString) + ($0.defaultValue != nil ? " DEFAULT " + $0.defaultValue! : "")
         }).joined(separator: ", ")
 
         if schema != "public" {

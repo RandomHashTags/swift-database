@@ -24,9 +24,12 @@ import SwiftDatabaseBlueprint
                     constraints: [.primaryKey],
                     postgresDataType: .bigserial
                 ),
-                .timestampNoTimeZone(
-                    name: "created",
-                    autoCreatePreparedStatements: false
+                .optional(
+                    .timestampNoTimeZone(
+                        name: "created",
+                        defaultValue: .sqlNow(),
+                        autoCreatePreparedStatements: false
+                    ),
                 ),
                 .optional(
                     .timestampNoTimeZone(
@@ -61,7 +64,7 @@ struct UserAccount: PostgresModel {
 
     var id:IDValue
 
-    var created:Date
+    var created:Date?
     var deleted:Date?
 
     var email:String
@@ -74,10 +77,15 @@ extension UserAccount {
     static func postgresDecode(columns: [String?]) throws -> Self? {
         guard columns.count == 6 else { return nil }
         guard let id = IDValue(columns[0]!) else { return nil }
-        let created = try Date.postgresDecode(columns[1]!, as: .timestampNoTimeZone(precision: 0)) ?? Date.now
+        let created:Date?
+        if let v = columns[1] {
+            created = try Date.postgresDecode(v, as: .timestampNoTimeZone(precision: 0))
+        } else {
+            created = nil
+        }
         let deleted:Date?
         if let v = columns[2] {
-            deleted = try Date.postgresDecode(v, as: .timestampNoTimeZone(precision: 0)) ?? Date.now
+            deleted = try Date.postgresDecode(v, as: .timestampNoTimeZone(precision: 0))
         } else {
             deleted = nil
         }
