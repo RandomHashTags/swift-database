@@ -164,15 +164,15 @@ extension ModelMacro {
                 removedFields: []
             )
             for field in revision.addedFields {
-                if !latestFieldKeys.contains(field.columnName) {
+                if latestFieldKeys.contains(field.columnName) {
+                    context.diagnose(DiagnosticMsg.fieldAlreadyExists(expr: field.expr))
+                    return nil
+                } else {
                     if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
+                        context.diagnose(DiagnosticMsg.notNullFieldMissingDefaultValue(expr: field.expr))
                         return nil
                     }
                     latestFields.append(field)
-                } else {
-                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.fieldAlreadyExists()))
-                    return nil
                 }
                 latestFieldKeys.insert(field.columnName)
                 validRevision.addedFields.append(field)
@@ -180,14 +180,14 @@ extension ModelMacro {
             for field in revision.updatedFields {
                 if let index = latestFields.firstIndex(where: { $0.columnName == field.columnName }) {
                     if latestFields[index].postgresDataType == field.postgresDataType {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldWithIdenticalDataType()))
+                        context.diagnose(DiagnosticMsg.cannotUpdateFieldWithIdenticalDataType(expr: field.expr))
                     } else {
                         latestFields[index].variableName = field.variableName
                         latestFields[index].postgresDataType = field.postgresDataType
                         validRevision.updatedFields.append(field)
                     }
                 } else {
-                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotUpdateFieldThatDoesntExist()))
+                    context.diagnose(DiagnosticMsg.cannotUpdateFieldThatDoesntExist(expr: field.expr))
                 }
             }
             for field in revision.removedFields {
@@ -196,7 +196,7 @@ extension ModelMacro {
                     latestFieldKeys.remove(field.name)
                     validRevision.removedFields.append(field)
                 } else {
-                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRemoveFieldThatDoesntExist()))
+                    context.diagnose(DiagnosticMsg.cannotRemoveFieldThatDoesntExist(expr: field.expr))
                 }
             }
             for field in revision.renamedFields {
@@ -208,11 +208,11 @@ extension ModelMacro {
                         latestFieldKeys.insert(field.to)
                         validRevision.renamedFields.append(field)
                     } else {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldToExistingField(from: field.from, to: field.to)))
+                        context.diagnose(DiagnosticMsg.cannotRenameFieldToExistingField(field: field))
                         return nil
                     }
                 } else {
-                    context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.cannotRenameFieldThatDoesntExist()))
+                    context.diagnose(DiagnosticMsg.cannotRenameFieldThatDoesntExist(expr: field.expr))
                 }
             }
             // make sure a primary key exists after applying this revision
@@ -290,6 +290,8 @@ extension ModelCondition {
                                 case 0: // join operator
                                     if let s = t.expression.memberAccess?.declName.baseName.text {
                                         joiningOperator = .init(rawValue: s)
+                                    } else {
+                                        context.diagnose(DiagnosticMsg.expectedMemberAccessExpr(expr: t.expression))
                                     }
                                 case 1: // condition
                                     condition = ModelCondition.Value.parse(context: context, expr: t.expression)
@@ -302,6 +304,8 @@ extension ModelCondition {
                             }
                         }
                     }
+                } else {
+                    context.diagnose(DiagnosticMsg.expectedArrayExpr(expr: arg.expression))
                 }
             default:
                 break
@@ -330,6 +334,8 @@ extension ModelCondition.Value {
             case "operator":
                 if let s = arg.expression.memberAccess?.declName.baseName.text {
                     `operator` = ModelCondition.Operator(rawValue: s)
+                } else {
+                    context.diagnose(DiagnosticMsg.expectedMemberAccessExpr(expr: arg.expression))
                 }
             case "value":
                 value = arg.expression.legalStringliteralText(context: context)
@@ -385,6 +391,8 @@ extension ModelRevision {
                     return ($0.expression, value)
                 }) {
                     removedFields = values
+                } else {
+                    context.diagnose(DiagnosticMsg.expectedArrayExpr(expr: arg.expression))
                 }
             default:
                 break
@@ -409,7 +417,10 @@ extension ModelRevision {
         context: some MacroExpansionContext,
         expr: ExprSyntax
     ) -> [ModelRevision.Field.Compiled] {
-        guard let array = expr.array?.elements else { return [] }
+        guard let array = expr.array?.elements else {
+            context.diagnose(DiagnosticMsg.expectedArrayExpr(expr: expr))
+            return []
+        }
         var fields = [ModelRevision.Field.Compiled]()
         for element in array {
             if let field = ModelRevision.Field.parse(context: context, expr: element.expression) {
@@ -422,7 +433,11 @@ extension ModelRevision {
         context: some MacroExpansionContext,
         expr: ExprSyntax
     ) -> [(ExprSyntax, String, String)] {
-        return expr.array?.elements.compactMap({
+        guard let array = expr.array?.elements else {
+            context.diagnose(DiagnosticMsg.expectedArrayExpr(expr: expr))
+            return []
+        }
+        return array.compactMap({
             guard let tuple = $0.expression.tuple?.elements,
                 let from = tuple.first?.expression.legalStringliteralText(context: context),
                 let to = tuple.last?.expression.legalStringliteralText(context: context)
@@ -430,6 +445,6 @@ extension ModelRevision {
                 return nil
             }
             return ($0.expression, from, to)
-        }) ?? []
+        })
     }
 }

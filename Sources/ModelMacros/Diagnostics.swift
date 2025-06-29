@@ -20,6 +20,9 @@ extension DiagnosticMsg: FixItMessage {
 
 // MARK: General
 extension DiagnosticMsg {
+    static func expectedArrayExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedArrayExpr", message: "Expected array expression"))
+    }
     static func expectedFunctionCallExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedFunctionCallExpr", message: "Expected function call expression"))
     }
@@ -61,11 +64,11 @@ extension DiagnosticMsg {
 }
 
 extension DiagnosticMsg {
-    static func notNullFieldMissingDefaultValue() -> DiagnosticMsg {
-        DiagnosticMsg(id: "notNullFieldMissingDefaultValue", message: "Field with constraint '.notNull' is missing a default value")
+    static func notNullFieldMissingDefaultValue(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "notNullFieldMissingDefaultValue", message: "Field with constraint '.notNull' is missing a default value"))
     }
-    static func fieldAlreadyExists() -> DiagnosticMsg {
-        DiagnosticMsg(id: "fieldAlreadyExists", message: "Field already exists at this point")
+    static func fieldAlreadyExists(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "fieldAlreadyExists", message: "Field already exists at this point"))
     }
 }
 
@@ -73,20 +76,20 @@ extension DiagnosticMsg {
     static func missingPrimaryKey() -> DiagnosticMsg {
         DiagnosticMsg(id: "missingPrimaryKey", message: "ModelRevision doesn't contain a primary key field at this point")
     }
-    static func cannotUpdateFieldThatDoesntExist() -> DiagnosticMsg {
-        DiagnosticMsg(id: "cannotUpdateFieldThatDoesntExist", message: "Field cannot be updated because it doesn't exist at this point", severity: .warning)
+    static func cannotUpdateFieldThatDoesntExist(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "cannotUpdateFieldThatDoesntExist", message: "Field cannot be updated because it doesn't exist at this point; ignoring", severity: .warning))
     }
-    static func cannotUpdateFieldWithIdenticalDataType() -> DiagnosticMsg {
-        DiagnosticMsg(id: "cannotUpdateFieldWithIdenticalDataType", message: "Field cannot be updated because the data types are identical at this point", severity: .warning)
+    static func cannotUpdateFieldWithIdenticalDataType(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "cannotUpdateFieldWithIdenticalDataType", message: "Field cannot be updated because the data types are identical at this point; ignoring", severity: .warning))
     }
-    static func cannotRemoveFieldThatDoesntExist() -> DiagnosticMsg {
-        DiagnosticMsg(id: "cannotRemoveFieldThatDoesntExist", message: "Field cannot be removed because it doesn't exist at this point", severity: .warning)
+    static func cannotRemoveFieldThatDoesntExist(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "cannotRemoveFieldThatDoesntExist", message: "Field cannot be removed because it doesn't exist at this point; ignoring", severity: .warning))
     }
-    static func cannotRenameFieldThatDoesntExist() -> DiagnosticMsg {
-        DiagnosticMsg(id: "cannotRenameFieldThatDoesntExist", message: "Field cannot be renamed because it doesn't exist at this point", severity: .warning)
+    static func cannotRenameFieldThatDoesntExist(expr: ExprSyntax) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "cannotRenameFieldThatDoesntExist", message: "Field cannot be renamed because it doesn't exist at this point; ignoring", severity: .warning))
     }
-    static func cannotRenameFieldToExistingField(from: String, to: String) -> DiagnosticMsg {
-        DiagnosticMsg(id: "cannotRenameFieldToExistingField", message: "Field '\(from)' cannot be renamed to '\(to)' because a field named '\(to)' already exists at this point")
+    static func cannotRenameFieldToExistingField(field: (expr: ExprSyntax, from: String, to: String)) -> Diagnostic {
+        Diagnostic(node: field.expr, message: DiagnosticMsg(id: "cannotRenameFieldToExistingField", message: "Field '\(field.from)' cannot be renamed to '\(field.to)' because a field named '\(field.to)' already exists at this point"))
     }
 }
 

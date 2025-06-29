@@ -98,7 +98,7 @@ extension ModelMacro {
                 var sql = "ADD COLUMN \(field.columnName) \(dataType.name)"
                 if !field.constraints.isEmpty {
                     if field.defaultValue == nil && field.constraints.contains(.notNull) {
-                        context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.notNullFieldMissingDefaultValue()))
+                        context.diagnose(DiagnosticMsg.notNullFieldMissingDefaultValue(expr: field.expr))
                         return nil
                     }
                     sql += " " + field.constraints.map({ $0.name }).joined(separator: ", ")
