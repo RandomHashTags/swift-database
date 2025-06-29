@@ -14,18 +14,22 @@ extension ModelRevision {
         public package(set) var postgresDataType:PostgresDataType?
         public let defaultValue:String?
 
+        public let autoCreatePreparedStatements:Bool
+
         public init(
             name: String,
             variableName: String? = nil,
             constraints: [Constraint] = [.notNull],
             postgresDataType: PostgresDataType? = nil,
-            defaultValue: String? = nil
+            defaultValue: String? = nil,
+            autoCreatePreparedStatements: Bool = true
         ) {
             self.name = name
             self.variableName = variableName ?? name
             self.constraints = constraints
             self.postgresDataType = postgresDataType
             self.defaultValue = defaultValue
+            self.autoCreatePreparedStatements = autoCreatePreparedStatements
         }
 
         public init(

@@ -26,12 +26,14 @@ import SwiftDatabaseBlueprint
                 ),
                 .init(
                     name: "created",
-                    postgresDataType: .timestampNoTimeZone(precision: 0)
+                    postgresDataType: .timestampNoTimeZone(precision: 0),
+                    autoCreatePreparedStatements: false
                 ),
                 .init(
                     name: "deleted",
                     constraints: [],
-                    postgresDataType: .timestampNoTimeZone(precision: 0)
+                    postgresDataType: .timestampNoTimeZone(precision: 0),
+                    autoCreatePreparedStatements: false
                 ),
                 .init(
                     name: "email",

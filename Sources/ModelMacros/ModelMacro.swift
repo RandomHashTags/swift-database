@@ -405,6 +405,7 @@ extension ModelRevision.Field {
         var constraints:[Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
+        var autoCreatePreparedStatements:Bool
 
         var isRequired: Bool {
             constraints.contains(.primaryKey) || constraints.contains(.notNull)
@@ -427,6 +428,7 @@ extension ModelRevision.Field {
         var constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
+        var autoCreatePreparedStatements:Bool = true
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
@@ -450,6 +452,8 @@ extension ModelRevision.Field {
                 defaultValue = arg.expression.stringLiteral?.legalText(context: context)
                                 ?? arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text
                                 ?? arg.expression.integerLiteral?.literal.text
+            case "autoCreatePreparedStatements":
+                autoCreatePreparedStatements = arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text == "true"
             default:
                 break
             }
@@ -461,7 +465,8 @@ extension ModelRevision.Field {
             variableName: variableName ?? columnName,
             constraints: constraints,
             postgresDataType: postgresDataType,
-            defaultValue: defaultValue
+            defaultValue: defaultValue,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
         )
     }
 }

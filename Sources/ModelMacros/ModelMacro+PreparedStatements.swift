@@ -54,7 +54,7 @@ extension ModelMacro {
             preparedStatements.append(.init(name: "update", parameters: fields, returningFields: [], sql: updateSQL))
             
             for field in insertFields {
-                if field != primaryKeyField {
+                if field.autoCreatePreparedStatements, field != primaryKeyField {
                     let sql = "UPDATE \(schemaTable) SET \(field.columnName) = $2 WHERE \(primaryKeyField.columnName) = $1"
                     preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returningFields: [], sql: sql))
                 }
@@ -71,22 +71,24 @@ extension ModelMacro {
         preparedStatements.append(.init(
             name: "selectAllWithLimitAndOffset",
             parameters: [
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), columnName: "limit", variableName: "", postgresDataType: .integer),
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), columnName: "offset", variableName: "", postgresDataType: .integer)
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), columnName: "limit", variableName: "", postgresDataType: .integer, autoCreatePreparedStatements: false),
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), columnName: "offset", variableName: "", postgresDataType: .integer, autoCreatePreparedStatements: false)
             ],
             returningFields: fields,
             sql: selectWithLimitAndOffsetSQL
         ))
         for field in fields {
-            let sql = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(field.columnName) = $1"
-            let name = field.formattedName
-            preparedStatements.append(.init(
-                name: "selectAllWhere\(name)Equals",
-                parameters: [
-                    .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), columnName: field.columnName, variableName: field.variableName, postgresDataType: field.postgresDataType)
-                ],
-                returningFields: fields, sql: sql
-            ))
+            if field.autoCreatePreparedStatements {
+                let sql = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(field.columnName) = $1"
+                let name = field.formattedName
+                preparedStatements.append(.init(
+                    name: "selectAllWhere\(name)Equals",
+                    parameters: [
+                        .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), columnName: field.columnName, variableName: field.variableName, postgresDataType: field.postgresDataType, autoCreatePreparedStatements: false)
+                    ],
+                    returningFields: fields, sql: sql
+                ))
+            }
         }
 
         for (selectFields, condition) in selectFilters {
