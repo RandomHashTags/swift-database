@@ -30,16 +30,19 @@ extension DiagnosticMsg {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedMemberAccessExpr", message: "Expected member access expression"))
     }
     static func expectedFunctionCallOrMemberAccessExpr(expr: some ExprSyntaxProtocol) -> Diagnostic {
-        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedFunctionCallOrMemberAccessExpr", message: "Expected function call or member access expression"))
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedFunctionCallOrMemberAccessExpr", message: "Expected function call or member access expression; got \(expr.kind)"))
     }
     static func expectedStringLiteral(expr: some ExprSyntaxProtocol) -> Diagnostic {
-        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteral", message: "Expected string literal"))
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteral", message: "Expected string literal; got \(expr.kind)"))
     }
     static func expectedStringLiteralOrMemberAccess(expr: some ExprSyntaxProtocol) -> Diagnostic {
-        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteralOrMemberAccess", message: "Expected string literal or member access"))
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteralOrMemberAccess", message: "Expected string literal or member access; got \(expr.kind)"))
     }
     static func stringLiteralContainsIllegalCharacter(expr: some ExprSyntaxProtocol, char: Character) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "stringLiteralContainsIllegalCharacter", message: "String literal contains illegal character: '\(char)'"))
+    }
+    static func expectedRawModelIdentifier(expr: some ExprSyntaxProtocol) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedRawModelIdentifier", message: "Expected a raw model identifier (string literal, member access or key path); got \(expr.kind)"))
     }
 }
 

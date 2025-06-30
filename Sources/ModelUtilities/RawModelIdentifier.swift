@@ -9,3 +9,6 @@ extension String: RawModelIdentifier {
 extension Substring: RawModelIdentifier {
     public var rawValue: String { String(self) }
 }
+extension AnyKeyPath: RawModelIdentifier {
+    public var rawValue: String { debugDescription }
+}

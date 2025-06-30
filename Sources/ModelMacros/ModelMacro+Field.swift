@@ -54,9 +54,9 @@ extension ModelRevision.Field {
                     var fieldName:String? = nil
                     for (i, element) in tuple.elements.enumerated() {
                         switch i {
-                        case 0: schema = element.expression.legalStringLiteralOrMemberAccessText(context: context)
-                        case 1: table = element.expression.legalStringLiteralOrMemberAccessText(context: context)
-                        case 2: fieldName = element.expression.legalStringLiteralOrMemberAccessText(context: context)
+                        case 0: schema = element.expression.legalRawModelIdentifier(context: context)
+                        case 1: table = element.expression.legalRawModelIdentifier(context: context)
+                        case 2: fieldName = element.expression.legalRawModelIdentifier(context: context)
                         default: break
                         }
                     }
@@ -139,9 +139,9 @@ extension ModelRevision.Field {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
-                columnName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                columnName = arg.expression.legalRawModelIdentifier(context: context)
             case "variableName":
-                variableName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                variableName = arg.expression.legalRawModelIdentifier(context: context)
             case "constraints":
                 if let array = arg.expression.array?.elements {
                     constraints = array.compactMap({ .parse(context: context, expr: $0.expression) })
@@ -216,9 +216,9 @@ extension ModelRevision.Field.Constraint {
                     for arg in functionCall.arguments {
                         switch arg.label?.text {
                         case "leftFieldName":
-                            leftFieldName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                            leftFieldName = arg.expression.legalRawModelIdentifier(context: context)
                         case "rightFieldName":
-                            rightFieldName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                            rightFieldName = arg.expression.legalRawModelIdentifier(context: context)
                         default:
                             break
                         }
@@ -232,11 +232,11 @@ extension ModelRevision.Field.Constraint {
                     for arg in functionCall.arguments {
                         switch arg.label?.text {
                         case "schema":
-                            schema = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                            schema = arg.expression.legalRawModelIdentifier(context: context)
                         case "table":
-                            table = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                            table = arg.expression.legalRawModelIdentifier(context: context)
                         case "fieldName":
-                            fieldName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                            fieldName = arg.expression.legalRawModelIdentifier(context: context)
                         default:
                             break
                         }

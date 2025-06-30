@@ -29,7 +29,7 @@ import SwiftDatabaseBlueprint
                     )
                 ),
                 .primaryKeyReference(
-                    referencing: (schema: TestSchemas.public, table: TestModels.users, fieldName: "id"),
+                    referencing: (schema: TestSchemas.public, table: TestModels.users, fieldName: \UserAccount.id),
                     name: "user_id",
                     variableName: "userID"
                 ),

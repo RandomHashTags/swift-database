@@ -34,14 +34,22 @@ extension ExprSyntax {
         }
         return stringLiteral.legalText(context: context, isLegal)
     }
-    package func legalStringLiteralOrMemberAccessText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
+    package func legalRawModelIdentifier(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
         if let stringLiteral {
             return stringLiteral.legalText(context: context, isLegal)
         }
         if let memberAccess {
             return memberAccess.declName.baseName.text.legalText(context: context, expr: memberAccess.declName)
         }
-        context.diagnose(DiagnosticMsg.expectedStringLiteralOrMemberAccess(expr: self))
+        if let keyPath = self.as(KeyPathExprSyntax.self) {
+            switch keyPath.components.last?.component {
+            case .property(let property):
+                return property.declName.baseName.text.legalText(context: context, expr: keyPath)
+            default:
+                break
+            }
+        }
+        context.diagnose(DiagnosticMsg.expectedRawModelIdentifier(expr: self))
         return nil
     }
 }

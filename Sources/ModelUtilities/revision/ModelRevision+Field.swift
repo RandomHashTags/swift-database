@@ -121,15 +121,28 @@ extension ModelRevision.Field {
         variableName: String? = nil,
         autoCreatePreparedStatements: Bool = true
     ) -> Self {
+        return primaryKeyReference(
+            referencing: (referencing.schema.rawValue, referencing.table.rawValue, referencing.fieldName.rawValue),
+            name: name,
+            variableName: variableName,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+    public static func primaryKeyReference(
+        referencing: (schema: String, table: String, fieldName: String),
+        name: String,
+        variableName: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
         return .init(
             name: name,
             variableName: variableName,
             constraints: [
                 .notNull,
                 .references(
-                    schema: referencing.schema.rawValue,
-                    table: referencing.table.rawValue,
-                    fieldName: referencing.fieldName.rawValue
+                    schema: referencing.schema,
+                    table: referencing.table,
+                    fieldName: referencing.fieldName
                 )
             ],
             postgresDataType: .bigserial,

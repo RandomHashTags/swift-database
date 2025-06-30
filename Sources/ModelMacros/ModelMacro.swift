@@ -54,11 +54,11 @@ extension ModelMacro: ExtensionMacro {
                         }
                     }
                 case "schema":
-                    schema = child.expression.legalStringLiteralOrMemberAccessText(context: context)
+                    schema = child.expression.legalRawModelIdentifier(context: context)
                 case "schemaAlias":
-                    schemaAlias = child.expression.legalStringLiteralOrMemberAccessText(context: context)
+                    schemaAlias = child.expression.legalRawModelIdentifier(context: context)
                 case "table":
-                    initialTable = child.expression.legalStringLiteralOrMemberAccessText(context: context)
+                    initialTable = child.expression.legalRawModelIdentifier(context: context)
                 case "revisions":
                     var previousTableName:String? = initialTable
                     var version = 0
@@ -376,7 +376,7 @@ extension ModelRevision {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "newTableName":
-                previousTableName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
+                previousTableName = arg.expression.legalRawModelIdentifier(context: context)
             case "addedFields":
                 addedFields = parseDictionaryString(context: context, expr: arg.expression)
             case "updatedFields":
@@ -385,7 +385,7 @@ extension ModelRevision {
                 renamedFields = parseRenamedFields(context: context, expr: arg.expression)
             case "removedFields":
                 if let values:[(ExprSyntax, String)] = arg.expression.array?.elements.compactMap({
-                    guard let value = $0.expression.legalStringLiteralOrMemberAccessText(context: context) else {
+                    guard let value = $0.expression.legalRawModelIdentifier(context: context) else {
                         return nil
                     }
                     return ($0.expression, value)
