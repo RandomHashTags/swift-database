@@ -54,11 +54,11 @@ extension ModelMacro: ExtensionMacro {
                         }
                     }
                 case "schema":
-                    schema = child.expression.legalStringliteralText(context: context)
+                    schema = child.expression.legalStringLiteralOrMemberAccessText(context: context)
                 case "schemaAlias":
-                    schemaAlias = child.expression.legalStringliteralText(context: context)
+                    schemaAlias = child.expression.legalStringLiteralOrMemberAccessText(context: context)
                 case "table":
-                    initialTable = child.expression.legalStringliteralText(context: context)
+                    initialTable = child.expression.legalStringLiteralOrMemberAccessText(context: context)
                 case "revisions":
                     var previousTableName:String? = initialTable
                     var version = 0
@@ -79,7 +79,7 @@ extension ModelMacro: ExtensionMacro {
                                 for (i, t) in tuple.elements.enumerated() {
                                     switch i {
                                     case 0:
-                                        fields = t.expression.array?.elements.compactMap({ $0.expression.legalStringliteralText(context: context) })
+                                        fields = t.expression.array?.elements.compactMap({ $0.expression.legalStringLiteralText(context: context) })
                                     case 1:
                                         condition = ModelCondition.parse(context: context, expr: t.expression)
                                     default:
@@ -276,7 +276,7 @@ extension ModelCondition {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
-                name = arg.expression.legalStringliteralText(context: context)
+                name = arg.expression.legalStringLiteralText(context: context)
             case "firstCondition":
                 firstCondition = ModelCondition.Value.parse(context: context, expr: arg.expression)
             case "additionalConditions":
@@ -330,7 +330,7 @@ extension ModelCondition.Value {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "field":
-                field = arg.expression.legalStringliteralText(context: context)
+                field = arg.expression.legalStringLiteralText(context: context)
             case "operator":
                 if let s = arg.expression.memberAccess?.declName.baseName.text {
                     `operator` = ModelCondition.Operator(rawValue: s)
@@ -338,7 +338,7 @@ extension ModelCondition.Value {
                     context.diagnose(DiagnosticMsg.expectedMemberAccessExpr(expr: arg.expression))
                 }
             case "value":
-                value = arg.expression.legalStringliteralText(context: context)
+                value = arg.expression.legalStringLiteralText(context: context)
             default:
                 break
             }
@@ -376,7 +376,7 @@ extension ModelRevision {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "newTableName":
-                previousTableName = arg.expression.legalStringliteralText(context: context)
+                previousTableName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
             case "addedFields":
                 addedFields = parseDictionaryString(context: context, expr: arg.expression)
             case "updatedFields":
@@ -385,7 +385,7 @@ extension ModelRevision {
                 renamedFields = parseRenamedFields(context: context, expr: arg.expression)
             case "removedFields":
                 if let values:[(ExprSyntax, String)] = arg.expression.array?.elements.compactMap({
-                    guard let value = $0.expression.legalStringliteralText(context: context) else {
+                    guard let value = $0.expression.legalStringLiteralOrMemberAccessText(context: context) else {
                         return nil
                     }
                     return ($0.expression, value)
@@ -439,8 +439,8 @@ extension ModelRevision {
         }
         return array.compactMap({
             guard let tuple = $0.expression.tuple?.elements,
-                let from = tuple.first?.expression.legalStringliteralText(context: context),
-                let to = tuple.last?.expression.legalStringliteralText(context: context)
+                let from = tuple.first?.expression.legalStringLiteralText(context: context),
+                let to = tuple.last?.expression.legalStringLiteralText(context: context)
             else {
                 return nil
             }

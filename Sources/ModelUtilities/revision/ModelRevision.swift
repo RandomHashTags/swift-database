@@ -19,4 +19,17 @@ public struct ModelRevision: Sendable {
         self.renamedFields = renamedFields
         self.removedFields = removedFields
     }
+    public init<T: RawModelIdentifier>(
+        newTableName: T? = nil,
+        addedFields: [Field] = [],
+        updatedFields: [Field] = [],
+        renamedFields: [(from: String, to: String)] = [],
+        removedFields: Set<String> = []
+    ) {
+        self.newTableName = newTableName?.rawValue
+        self.addedFields = addedFields
+        self.updatedFields = updatedFields
+        self.renamedFields = renamedFields
+        self.removedFields = removedFields
+    }
 }

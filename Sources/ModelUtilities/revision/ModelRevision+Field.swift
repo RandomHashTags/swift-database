@@ -98,6 +98,48 @@ extension ModelRevision.Field {
 }
 
 extension ModelRevision.Field {
+    public static func primaryKey(
+        name: String,
+        variableName: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        return .init(
+            name: name,
+            variableName: variableName,
+            constraints: [.primaryKey],
+            postgresDataType: .bigserial,
+            defaultValue: nil,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+}
+
+extension ModelRevision.Field {
+    public static func primaryKeyReference<Schema: RawModelIdentifier, Table: RawModelIdentifier, FieldName: RawModelIdentifier>(
+        referencing: (schema: Schema, table: Table, fieldName: FieldName),
+        name: String,
+        variableName: String? = nil,
+        autoCreatePreparedStatements: Bool = true
+    ) -> Self {
+        return .init(
+            name: name,
+            variableName: variableName,
+            constraints: [
+                .notNull,
+                .references(
+                    schema: referencing.schema.rawValue,
+                    table: referencing.table.rawValue,
+                    fieldName: referencing.fieldName.rawValue
+                )
+            ],
+            postgresDataType: .bigserial,
+            defaultValue: nil,
+            autoCreatePreparedStatements: autoCreatePreparedStatements
+        )
+    }
+}
+
+extension ModelRevision.Field {
     public static func bool(
         name: String,
         variableName: String? = nil,

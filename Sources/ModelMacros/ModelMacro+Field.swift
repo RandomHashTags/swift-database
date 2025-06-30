@@ -31,7 +31,7 @@ extension ModelRevision.Field {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
-        let constraints:[ModelRevision.Field.Constraint] = [.notNull]
+        var constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         switch functionCall.calledExpression.memberAccess?.declName.baseName.text {
         case "init":
@@ -41,6 +41,30 @@ extension ModelRevision.Field {
                 let disallowed:Set<Constraint> = [.notNull, .primaryKey]
                 v.constraints.removeAll(where: { disallowed.contains($0) })
                 return v
+            }
+        case "primaryKey":
+            postgresDataType = .bigserial
+            constraints = [.primaryKey]
+        case "primaryKeyReference":
+            postgresDataType = .bigserial
+            if let referencing = functionCall.arguments.first(where: { $0.label?.text == "referencing" }) {
+                if let tuple = referencing.expression.tuple, tuple.elements.count == 3 {
+                    var schema:String? = nil
+                    var table:String? = nil
+                    var fieldName:String? = nil
+                    for (i, element) in tuple.elements.enumerated() {
+                        switch i {
+                        case 0: schema = element.expression.legalStringLiteralOrMemberAccessText(context: context)
+                        case 1: table = element.expression.legalStringLiteralOrMemberAccessText(context: context)
+                        case 2: fieldName = element.expression.legalStringLiteralOrMemberAccessText(context: context)
+                        default: break
+                        }
+                    }
+                    guard let schema, let table, let fieldName else {
+                        break
+                    }
+                    constraints = [.notNull, .references(schema: schema, table: table, fieldName: fieldName)]
+                }
             }
         case "bool":
             postgresDataType = .boolean
@@ -115,9 +139,9 @@ extension ModelRevision.Field {
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
-                columnName = arg.expression.legalStringliteralText(context: context)
+                columnName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
             case "variableName":
-                variableName = arg.expression.legalStringliteralText(context: context)
+                variableName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
             case "constraints":
                 if let array = arg.expression.array?.elements {
                     constraints = array.compactMap({ .parse(context: context, expr: $0.expression) })
@@ -192,9 +216,9 @@ extension ModelRevision.Field.Constraint {
                     for arg in functionCall.arguments {
                         switch arg.label?.text {
                         case "leftFieldName":
-                            leftFieldName = arg.expression.legalStringliteralText(context: context)
+                            leftFieldName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
                         case "rightFieldName":
-                            rightFieldName = arg.expression.legalStringliteralText(context: context)
+                            rightFieldName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
                         default:
                             break
                         }
@@ -208,16 +232,16 @@ extension ModelRevision.Field.Constraint {
                     for arg in functionCall.arguments {
                         switch arg.label?.text {
                         case "schema":
-                            schema = arg.expression.legalStringliteralText(context: context)
+                            schema = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
                         case "table":
-                            table = arg.expression.legalStringliteralText(context: context)
+                            table = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
                         case "fieldName":
-                            fieldName = arg.expression.legalStringliteralText(context: context)
+                            fieldName = arg.expression.legalStringLiteralOrMemberAccessText(context: context)
                         default:
                             break
                         }
                     }
-                    guard let schema, let table else { return nil }
+                    guard let schema, let table, let fieldName else { return nil }
                     return .references(schema: schema, table: table, fieldName: fieldName)
                 default:
                     context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))

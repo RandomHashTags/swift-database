@@ -10,8 +10,8 @@ extension ModelRevision.Field {
         /// - Parameters:
         ///   - schema: the schema where the table is located
         ///   - table: the referenced table
-        ///   - fieldName: the referenced field in the table; leave `nil` to default to the table's primary key
-        case references(schema: String, table: String, fieldName: String?)
+        ///   - fieldName: the referenced field in the table
+        case references(schema: String, table: String, fieldName: String)
 
         @inlinable
         public var name: String {
@@ -21,7 +21,7 @@ extension ModelRevision.Field {
             case .unique: "UNIQUE"
             case .nullsNotDistinct: "NULLS NOT DISTINCT"
             case .primaryKey: "PRIMARY KEY"
-            case .references(let schema, let table, let fieldName): "REFERENCES " + schema + "." + table + (fieldName != nil ? " (\(fieldName!))" : "")
+            case .references(let schema, let table, let fieldName): "REFERENCES " + schema + "." + table + " (" + fieldName + ")"
             }
         }
     }

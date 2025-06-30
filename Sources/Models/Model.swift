@@ -1,16 +1,7 @@
 
 import ModelUtilities
 
-@attached(extension, names: arbitrary)
-public macro Model(
-    supportedDatabases: [DatabaseType],
-    schema: String = "public",
-    schemaAlias: String? = nil,
-    table: String,
-    selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
-    revisions: [ModelRevision]
-) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
-
+// MARK: Model
 public protocol Model: AnyModel, ~Copyable {
     associatedtype IDValue: Sendable
     var id: IDValue { get }
@@ -37,3 +28,43 @@ extension Model where IDValue: OptionalProtocol {
         return .init(id)
     }
 }
+
+// MARK: Macros
+@attached(extension, names: arbitrary)
+public macro Model<
+    Table: RawModelIdentifier
+>(
+    supportedDatabases: [DatabaseType],
+    schema: String = "public",
+    schemaAlias: String? = nil,
+    table: Table,
+    selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
+    revisions: [ModelRevision]
+) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
+
+@attached(extension, names: arbitrary)
+public macro Model<
+    Schema: RawModelIdentifier,
+    SchemaAlias: RawModelIdentifier,
+    Table: RawModelIdentifier
+>(
+    supportedDatabases: [DatabaseType],
+    schema: Schema,
+    schemaAlias: SchemaAlias? = nil,
+    table: Table,
+    selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
+    revisions: [ModelRevision]
+) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
+
+@attached(extension, names: arbitrary)
+public macro Model<
+    Schema: RawModelIdentifier,
+    Table: RawModelIdentifier
+>(
+    supportedDatabases: [DatabaseType],
+    schema: Schema,
+    schemaAlias: String? = nil,
+    table: Table,
+    selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
+    revisions: [ModelRevision]
+) = #externalMacro(module: "ModelMacros", type: "ModelMacro")

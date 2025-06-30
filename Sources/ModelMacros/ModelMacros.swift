@@ -27,22 +27,37 @@ extension IntegerLiteralExprSyntax {
 }
 
 extension ExprSyntax {
-    package func legalStringliteralText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
+    package func legalStringLiteralText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
         guard let stringLiteral = stringLiteral else {
             context.diagnose(DiagnosticMsg.expectedStringLiteral(expr: self))
             return nil
         }
         return stringLiteral.legalText(context: context, isLegal)
     }
+    package func legalStringLiteralOrMemberAccessText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
+        if let stringLiteral {
+            return stringLiteral.legalText(context: context, isLegal)
+        }
+        if let memberAccess {
+            return memberAccess.declName.baseName.text.legalText(context: context, expr: memberAccess.declName)
+        }
+        context.diagnose(DiagnosticMsg.expectedStringLiteralOrMemberAccess(expr: self))
+        return nil
+    }
 }
 
 extension StringLiteralExprSyntax {
     package var text: String { segments.description }
     package func legalText(context: some MacroExpansionContext, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
-        if let illegal = text.first(where: { !($0.isLetter || $0.isNumber || $0 == "_" || isLegal($0)) }) {
-            context.diagnose(DiagnosticMsg.stringLiteralContainsIllegalCharacter(expr: self, char: illegal))
+        return text.legalText(context: context, expr: self, isLegal)
+    }
+}
+extension String {
+    package func legalText(context: some MacroExpansionContext, expr: some ExprSyntaxProtocol, _ isLegal: (Character) -> Bool = { _ in false }) -> String? {
+        if let illegal = self.first(where: { !($0.isLetter || $0.isNumber || $0 == "_" || isLegal($0)) }) {
+            context.diagnose(DiagnosticMsg.stringLiteralContainsIllegalCharacter(expr: expr, char: illegal))
             return nil
         }
-        return text
+        return self
     }
 }

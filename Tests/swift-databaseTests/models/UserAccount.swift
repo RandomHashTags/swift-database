@@ -11,19 +11,15 @@ import SwiftDatabaseBlueprint
 
 @Model(
     supportedDatabases: [.postgreSQL],
-    schema: "public",
-    table: "users",
+    schema: TestSchemas.public,
+    table: TestModels.users,
     selectFilters: [
         (["id"], .init(name: "passwordIsPASSWORD", firstCondition: .init(field: "password", operator: .equal, value: "PASSWORD")))
     ],
     revisions: [
         .init(
             addedFields: [
-                .init(
-                    name: "id",
-                    constraints: [.primaryKey],
-                    postgresDataType: .bigserial
-                ),
+                .primaryKey(name: "id"),
                 .optional(
                     .timestampNoTimeZone(
                         name: "created",
@@ -37,12 +33,8 @@ import SwiftDatabaseBlueprint
                         autoCreatePreparedStatements: false
                     )
                 ),
-                .string(
-                    name: "email"
-                ),
-                .string(
-                    name: "password"
-                )
+                .string(name: "email"),
+                .string(name: "password")
             ],
             removedFields: ["loop"]
         ),

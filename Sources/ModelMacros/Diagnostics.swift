@@ -35,6 +35,9 @@ extension DiagnosticMsg {
     static func expectedStringLiteral(expr: some ExprSyntaxProtocol) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteral", message: "Expected string literal"))
     }
+    static func expectedStringLiteralOrMemberAccess(expr: some ExprSyntaxProtocol) -> Diagnostic {
+        Diagnostic(node: expr, message: DiagnosticMsg(id: "expectedStringLiteralOrMemberAccess", message: "Expected string literal or member access"))
+    }
     static func stringLiteralContainsIllegalCharacter(expr: some ExprSyntaxProtocol, char: Character) -> Diagnostic {
         Diagnostic(node: expr, message: DiagnosticMsg(id: "stringLiteralContainsIllegalCharacter", message: "String literal contains illegal character: '\(char)'"))
     }

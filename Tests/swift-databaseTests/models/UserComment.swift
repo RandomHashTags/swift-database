@@ -11,16 +11,12 @@ import SwiftDatabaseBlueprint
 
 @Model(
     supportedDatabases: [.postgreSQL],
-    schema: "public",
-    table: "user_posts",
+    schema: TestSchemas.public,
+    table: TestModels.user_posts,
     revisions: [
         .init(
             addedFields: [
-                .init(
-                    name: "id",
-                    constraints: [.primaryKey],
-                    postgresDataType: .bigserial
-                ),
+                .primaryKey(name: "id"),
                 .optional(
                     .timestampNoTimeZone(
                         name: "created",
@@ -32,23 +28,18 @@ import SwiftDatabaseBlueprint
                         name: "deleted"
                     )
                 ),
-                .init(
+                .primaryKeyReference(
+                    referencing: (schema: TestSchemas.public, table: TestModels.users, fieldName: "id"),
                     name: "user_id",
-                    variableName: "userID",
-                    constraints: [.notNull, .references(schema: "public", table: "users", fieldName: "id")],
-                    postgresDataType: .bigserial
+                    variableName: "userID"
                 ),
-                .string(
-                    name: "content"
-                )
+                .string(name: "content")
             ]
         ),
         .init(
-            newTableName: "user_comments",
+            newTableName: TestModels.user_comments,
             updatedFields: [
-                .string(
-                    name: "content"
-                )
+                .string(name: "content")
             ],
             renamedFields: [
                 ("dood", "dude")
