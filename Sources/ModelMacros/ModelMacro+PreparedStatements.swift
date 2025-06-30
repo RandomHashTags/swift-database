@@ -33,60 +33,54 @@ extension ModelMacro {
     ) -> String {
         let schemaTable = schema + "." + table
         var preparedStatements = [PreparedStatement]()
-        let allFieldNamesJoined = fields.map { $0.columnName }.joined(separator: ", ")
-        var insertFields = fields
-        var primaryKeyField:ModelRevision.Field.Compiled? = nil
-        if let primaryKeyFieldIndex = insertFields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
-            primaryKeyField = insertFields[primaryKeyFieldIndex]
-            if primaryKeyField!.postgresDataType == .serial || primaryKeyField!.postgresDataType == .bigserial {
-                insertFields.remove(at: primaryKeyFieldIndex)
-            }
-        }
-        let insertFieldsJoined = insertFields.map { $0.columnName }.joined(separator: ", ")
-        let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
-        preparedStatements.append(.init(name: "insert", parameters: insertFields, returningFields: [], sql: insertSQL))
-        preparedStatements.append(.init(name: "insertReturning", parameters: insertFields, returningFields: fields, sql: insertSQL + " RETURNING \(allFieldNamesJoined)"))
+        let allColumnsJoined = fields.map { $0.columnName }.joined(separator: ", ")
+        let insertableFields = fields.insertableFields
+        let insertFieldsJoined = insertableFields.map { $0.columnName }.joined(separator: ", ")
+        let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertableFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
+        preparedStatements.append(.init(name: "insert", parameters: insertableFields, returnedColumns: [], sql: insertSQL))
+        preparedStatements.append(.init(name: "insertReturning", parameters: insertableFields, returnedColumns: fields, sql: insertSQL + " RETURNING \(allColumnsJoined)"))
 
-        if let primaryKeyField {
-            let updateSQL = "UPDATE \(schemaTable) SET " + insertFields.enumerated().map {
+        if let primaryKeyField = fields.primaryKey {
+            let updatableFields = fields.updatableFields
+            let updateSQL = "UPDATE \(schemaTable) SET " + updatableFields.enumerated().map {
                 $0.element.columnName + " = $\($0.offset+2)"
             }.joined(separator: ", ") + " WHERE \(primaryKeyField.columnName) = $1"
-            preparedStatements.append(.init(name: "update", parameters: fields, returningFields: [], sql: updateSQL))
+            preparedStatements.append(.init(name: "update", parameters: [primaryKeyField] + updatableFields, returnedColumns: [], sql: updateSQL))
             
-            for field in insertFields {
-                if field.autoCreatePreparedStatements, field != primaryKeyField {
+            for field in updatableFields {
+                if !field.behavior.contains(.dontCreatePreparedStatements) {
                     let sql = "UPDATE \(schemaTable) SET \(field.columnName) = $2 WHERE \(primaryKeyField.columnName) = $1"
-                    preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returningFields: [], sql: sql))
+                    preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returnedColumns: [], sql: sql))
                 }
             }
 
-            let selectSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(primaryKeyField.columnName) = $1"
-            preparedStatements.append(.init(name: "select", parameters: [primaryKeyField], returningFields: fields, sql: selectSQL))
+            let selectSQL = "SELECT \(allColumnsJoined) FROM \(schemaTable) WHERE \(primaryKeyField.columnName) = $1"
+            preparedStatements.append(.init(name: "select", parameters: [primaryKeyField], returnedColumns: fields, sql: selectSQL))
         }
         
-        let selectAllSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable)"
-        preparedStatements.append(.init(name: "selectAll", parameters: [], returningFields: fields, sql: selectAllSQL))
+        let selectAllSQL = "SELECT \(allColumnsJoined) FROM \(schemaTable)"
+        preparedStatements.append(.init(name: "selectAll", parameters: [], returnedColumns: fields, sql: selectAllSQL))
 
-        let selectWithLimitAndOffsetSQL = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) LIMIT $1 OFFSET $2"
+        let selectWithLimitAndOffsetSQL = "SELECT \(allColumnsJoined) FROM \(schemaTable) LIMIT $1 OFFSET $2"
         preparedStatements.append(.init(
             name: "selectAllWithLimitAndOffset",
             parameters: [
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), columnName: "limit", variableName: "", postgresDataType: .integer, autoCreatePreparedStatements: false),
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), columnName: "offset", variableName: "", postgresDataType: .integer, autoCreatePreparedStatements: false)
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), columnName: "limit", variableName: "", postgresDataType: .integer, behavior: []),
+                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), columnName: "offset", variableName: "", postgresDataType: .integer, behavior: [])
             ],
-            returningFields: fields,
+            returnedColumns: fields,
             sql: selectWithLimitAndOffsetSQL
         ))
         for field in fields {
-            if field.autoCreatePreparedStatements {
-                let sql = "SELECT \(allFieldNamesJoined) FROM \(schemaTable) WHERE \(field.columnName) = $1"
+            if !field.behavior.contains(.dontCreatePreparedStatements) {
+                let sql = "SELECT \(allColumnsJoined) FROM \(schemaTable) WHERE \(field.columnName) = $1"
                 let name = field.formattedName
                 preparedStatements.append(.init(
                     name: "selectAllWhere\(name)Equals",
                     parameters: [
-                        .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), columnName: field.columnName, variableName: field.variableName, postgresDataType: field.postgresDataType, autoCreatePreparedStatements: false)
+                        .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), columnName: field.columnName, variableName: field.variableName, postgresDataType: field.postgresDataType, behavior: [.dontCreatePreparedStatements])
                     ],
-                    returningFields: fields, sql: sql
+                    returnedColumns: fields, sql: sql
                 ))
             }
         }
@@ -102,7 +96,7 @@ extension ModelMacro {
                     continue
                 }
             }
-            preparedStatements.append(.init(name: "selectAllWhere_" + condition.name, parameters: [], returningFields: selectFieldsAndDataTypes, sql: sql))
+            preparedStatements.append(.init(name: "selectAllWhere_" + condition.name, parameters: [], returnedColumns: selectFieldsAndDataTypes, sql: sql))
         }
 
         var preparedStatementsString = "public enum PostgresPreparedStatements {"

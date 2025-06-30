@@ -20,17 +20,23 @@ import SwiftDatabaseBlueprint
         .init(
             addedFields: [
                 .primaryKey(name: "id"),
-                .optional(
-                    .timestampNoTimeZone(
-                        name: "created",
-                        defaultValue: .sqlNow(),
-                        autoCreatePreparedStatements: false
-                    ),
+                .timestampNoTimeZone(
+                    name: "created",
+                    defaultValue: .sqlNow(),
+                    behavior: [
+                        .dontCreatePreparedStatements,
+                        .notInsertable,
+                        .notUpdatable
+                    ]
                 ),
                 .optional(
                     .timestampNoTimeZone(
                         name: "deleted",
-                        autoCreatePreparedStatements: false
+                        behavior: [
+                            .dontCreatePreparedStatements,
+                            .notInsertable,
+                            .notUpdatable
+                        ]
                     )
                 ),
                 .string(name: "email"),

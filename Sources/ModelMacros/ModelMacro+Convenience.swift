@@ -26,15 +26,12 @@ extension ModelMacro {
         construct: ModelConstruct,
         fields: [ModelRevision.Field.Compiled]
     ) -> String {
-        var validFieldNames = [String]()
         for field in fields {
             if field.postgresDataType != nil {
-                validFieldNames.append(field.variableName)
             } else {
                 context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
             }
         }
-        let allValidFieldNames = validFieldNames
         let requireID:String
         let primaryKeyString:String
         if let primaryKeyFieldIndex = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
@@ -42,7 +39,6 @@ extension ModelMacro {
             requireID = "let \(primaryKeyField.columnName) = try requireID()\n"
             if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
                 primaryKeyString = ""
-                validFieldNames.remove(at: primaryKeyFieldIndex)
             } else {
                 primaryKeyString = requireID
             }
@@ -51,12 +47,16 @@ extension ModelMacro {
             primaryKeyString = ""
         }
 
-        let parametersJoined = validFieldNames.joined(separator: ", ")
+        let insertableFieldsJoined = fields.insertableFields.map { $0.variableName }.joined(separator: ", ")
+        var updatableFieldsJoined:String = fields.updatableFields.map { $0.variableName }.joined(separator: ", ")
+        if let pk = fields.primaryKey {
+            updatableFieldsJoined = pk.variableName + ", " + updatableFieldsJoined
+        }
         let mutationKeyword = construct.isStruct ? "mutating " : ""
         var string = "@discardableResult\n@inlinable\npublic \(mutationKeyword)func create<T: PostgresQueryableProtocol & ~Copyable>(\n"
         string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += primaryKeyString
-        string += "let response = try await PostgresPreparedStatements.insertReturning.execute(\non: &queryable,\nparameters: (\(parametersJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
+        string += "let response = try await PostgresPreparedStatements.insertReturning.execute(\non: &queryable,\nparameters: (\(insertableFieldsJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
         string += """
         if let msg = response.asRowDescription(),
                 let decoded = try await msg.decode(on: &queryable, as: Self.self).first,
@@ -70,7 +70,7 @@ extension ModelMacro {
         string += "@discardableResult\n@inlinable\npublic \(mutationKeyword)func update<T: PostgresQueryableProtocol & ~Copyable>(\n"
         string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += requireID
-        string += "let response = try await PostgresPreparedStatements.update.execute(\non: &queryable,\nparameters: (\(allValidFieldNames.joined(separator: ", "))),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
+        string += "let response = try await PostgresPreparedStatements.update.execute(\non: &queryable,\nparameters: (\(updatableFieldsJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
         string += "return self\n"
         string += "}"
         return string

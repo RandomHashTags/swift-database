@@ -17,6 +17,7 @@ We provide blueprint modules that lay out the API of the inner workings of each 
 ### WIP
 
 - [ ] Connection pool
+- [ ] Documentation
 - [ ] Memory-only database
 - [ ] PostgreSQL
 - [ ] Migrations
@@ -37,7 +38,6 @@ We provide blueprint modules that lay out the API of the inner workings of each 
 - [ ] MongoSQL
 - [ ] NoSQL
 - [ ] Oracle SQL
-- [ ] Documentation
 - [ ] DocC tutorials
 - [ ] Unit tests
 

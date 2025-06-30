@@ -130,7 +130,7 @@ extension ModelMacro: ExtensionMacro {
                 schemaAlias: schemaAlias,
                 revisions: revisions
             ))
-            members.append(compileSafety(construct: construct, fields: latestFields))
+            //members.append(compileSafety(construct: construct, fields: latestFields))
 
             convenienceLogicString = convenienceLogic(context: context, construct: construct, supportedDatabases: supportedDatabases, schema: schema, fields: latestFields)
         }
@@ -216,7 +216,7 @@ extension ModelMacro {
                 }
             }
             // make sure a primary key exists after applying this revision
-            if latestFields.first(where: { $0.constraints.contains(.primaryKey) }) == nil {
+            if latestFields.primaryKey == nil {
                 context.diagnose(Diagnostic(node: revision.expr, message: DiagnosticMsg.missingPrimaryKey()))
                 return nil
             }
@@ -255,7 +255,7 @@ extension ModelMacro {
     struct PreparedStatement: Sendable {
         let name:String
         let parameters:[ModelRevision.Field.Compiled]
-        let returningFields:[ModelRevision.Field.Compiled]
+        let returnedColumns:[ModelRevision.Field.Compiled]
         let sql:String
     }
 }

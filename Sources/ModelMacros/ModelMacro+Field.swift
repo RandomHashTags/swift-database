@@ -13,7 +13,7 @@ extension ModelRevision.Field {
         var constraints:[Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
-        var autoCreatePreparedStatements:Bool
+        var behavior:Set<ModelRevision.Field.Behavior>
 
         var isRequired: Bool {
             constraints.contains(.primaryKey) || constraints.contains(.notNull)
@@ -33,6 +33,7 @@ extension ModelRevision.Field {
         }
         var constraints:[ModelRevision.Field.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
+        var behavior:Set<ModelRevision.Field.Behavior> = ModelRevision.Field.defaultBehavior
         switch functionCall.calledExpression.memberAccess?.declName.baseName.text {
         case "init":
             break
@@ -45,6 +46,7 @@ extension ModelRevision.Field {
         case "primaryKey":
             postgresDataType = .bigserial
             constraints = [.primaryKey]
+            behavior.formUnion([.notInsertable, .notUpdatable])
         case "primaryKeyReference":
             postgresDataType = .bigserial
             if let referencing = functionCall.arguments.first(where: { $0.label?.text == "referencing" }) {
@@ -120,6 +122,7 @@ extension ModelRevision.Field {
             expr: expr,
             functionCall: functionCall,
             constraints: constraints,
+            behavior: behavior,
             postgresDataType: postgresDataType
         )
     }
@@ -128,6 +131,7 @@ extension ModelRevision.Field {
         expr: ExprSyntax,
         functionCall: FunctionCallExprSyntax,
         constraints: [Constraint],
+        behavior: Set<ModelRevision.Field.Behavior>,
         postgresDataType: PostgresDataType?
     ) -> Compiled? {
         var columnName:String? = nil
@@ -135,7 +139,7 @@ extension ModelRevision.Field {
         var constraints = constraints
         var postgresDataType = postgresDataType
         var defaultValue:String? = nil
-        var autoCreatePreparedStatements:Bool = true
+        var behavior:Set<ModelRevision.Field.Behavior> = behavior
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
@@ -182,8 +186,15 @@ extension ModelRevision.Field {
                         break
                     }
                 }
-            case "autoCreatePreparedStatements":
-                autoCreatePreparedStatements = arg.expression.as(BooleanLiteralExprSyntax.self)?.literal.text == "true"
+            case "behavior":
+                if let array = arg.expression.array?.elements {
+                    behavior.formUnion(Set(array.compactMap({
+                        guard let s = $0.expression.memberAccess?.declName.baseName.text else { return nil }
+                        return .init(rawValue: s)
+                    })))
+                } else {
+                    context.diagnose(DiagnosticMsg.expectedArrayExpr(expr: arg.expression))
+                }
             default:
                 break
             }
@@ -196,7 +207,7 @@ extension ModelRevision.Field {
             constraints: constraints,
             postgresDataType: postgresDataType,
             defaultValue: defaultValue,
-            autoCreatePreparedStatements: autoCreatePreparedStatements
+            behavior: behavior
         )
     }
 }
@@ -264,5 +275,20 @@ extension ModelRevision.Field.Constraint {
             context.diagnose(Diagnostic(node: expr, message: DiagnosticMsg.failedToParseModelRevisionFieldConstraint()))
             return nil
         }
+    }
+}
+
+// MARK: Extensions
+extension Array where Element == ModelRevision.Field.Compiled {
+    var primaryKey: Element? {
+        self.first(where: { $0.constraints.contains(.primaryKey) })
+    }
+
+    var insertableFields: Self {
+        self.filter { !$0.behavior.contains(.notInsertable) }
+    }
+
+    var updatableFields: Self {
+        self.filter { !$0.behavior.contains(.notUpdatable) }
     }
 }
