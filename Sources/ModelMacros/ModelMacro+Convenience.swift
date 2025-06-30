@@ -9,33 +9,34 @@ extension ModelMacro {
         construct: ModelConstruct,
         supportedDatabases: Set<DatabaseType>,
         schema: String,
-        fields: [ModelRevision.Field.Compiled]
+        fields: [ModelRevision.Column.Compiled]
     ) -> String {
-        var string = "extension \(construct.name) {\n"
+        var string = ""
         if supportedDatabases.contains(.postgreSQL) {
             string += postgresCreateOnConnection(context: context, construct: construct, fields: fields)
         }
-        string += "\n}"
+        if !string.isEmpty {
+            string = "extension " + construct.name + " {\n" + string + "\n}"
+        }
         return string
     }
 }
 
+// MARK: Postgres
 extension ModelMacro {
     private static func postgresCreateOnConnection(
         context: some MacroExpansionContext,
         construct: ModelConstruct,
-        fields: [ModelRevision.Field.Compiled]
+        fields: [ModelRevision.Column.Compiled]
     ) -> String {
         for field in fields {
-            if field.postgresDataType != nil {
-            } else {
+            if field.postgresDataType == nil {
                 context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
             }
         }
         let requireID:String
         let primaryKeyString:String
-        if let primaryKeyFieldIndex = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
-            let primaryKeyField = fields[primaryKeyFieldIndex]
+        if let primaryKeyField = fields.primaryKey {
             requireID = "let \(primaryKeyField.columnName) = try requireID()\n"
             if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
                 primaryKeyString = ""

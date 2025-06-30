@@ -17,21 +17,43 @@ import SwiftDatabaseBlueprint
         .init(
             addedFields: [
                 .primaryKey(name: "id"),
-                .optional(
-                    .timestampNoTimeZone(
-                        name: "created",
-                        defaultValue: .sqlNow()
-                    ),
+                .timestampNoTimeZone(
+                    name: "created",
+                    defaultValue: .sqlNow(),
+                    behavior: [
+                        .dontCreatePreparedStatements,
+                        .notInsertable,
+                        .notUpdatable
+                    ]
                 ),
                 .optional(
                     .timestampNoTimeZone(
-                        name: "deleted"
+                        name: "last_updated",
+                        variableName: "lastUpdated",
+                        behavior: [
+                            .dontCreatePreparedStatements,
+                            .notInsertable,
+                            .notUpdatable
+                        ]
+                    )
+                ),
+                .optional(
+                    .timestampNoTimeZone(
+                        name: "deleted",
+                        behavior: [
+                            .dontCreatePreparedStatements,
+                            .notInsertable,
+                            .notUpdatable
+                        ]
                     )
                 ),
                 .primaryKeyReference(
                     referencing: (schema: TestSchemas.public, table: TestModels.users, fieldName: \UserAccount.id),
                     name: "user_id",
-                    variableName: "userID"
+                    variableName: "userID",
+                    behavior: [
+                        .notUpdatable
+                    ]
                 ),
                 .string(name: "content")
             ]
@@ -61,6 +83,7 @@ struct UserComment: PostgresModel {
     var id:IDValue
 
     var created:Date?
+    var lastUpdated:Date?
     var deleted:Date?
 
     var userID:UserAccount.IDValue

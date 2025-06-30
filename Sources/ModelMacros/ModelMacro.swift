@@ -148,8 +148,8 @@ extension ModelMacro {
         context: some MacroExpansionContext,
         initialVersion: Int,
         revisions: inout [ModelRevision.Compiled]
-    ) -> [ModelRevision.Field.Compiled]? {
-        var latestFields = [ModelRevision.Field.Compiled]()
+    ) -> [ModelRevision.Column.Compiled]? {
+        var latestFields = [ModelRevision.Column.Compiled]()
         var latestFieldKeys = Set<String>()
         for indice in revisions.indices {
             let revision = revisions[indice]
@@ -230,7 +230,7 @@ extension ModelMacro {
 extension ModelMacro {
     static func compileSafety(
         construct: ModelConstruct,
-        fields: [ModelRevision.Field.Compiled]
+        fields: [ModelRevision.Column.Compiled]
     ) -> String {
         let constructName = construct.name
         var safetyString = "enum Safety {"
@@ -254,8 +254,8 @@ extension ModelMacro {
 extension ModelMacro {
     struct PreparedStatement: Sendable {
         let name:String
-        let parameters:[ModelRevision.Field.Compiled]
-        let returnedColumns:[ModelRevision.Field.Compiled]
+        let parameters:[ModelRevision.Column.Compiled]
+        let returnedColumns:[ModelRevision.Column.Compiled]
         let sql:String
     }
 }
@@ -354,8 +354,8 @@ extension ModelRevision {
         let expr:ExprSyntax
         let tableName:String
         let version:Int
-        var addedFields:[Field.Compiled]
-        var updatedFields:[Field.Compiled]
+        var addedFields:[Column.Compiled]
+        var updatedFields:[Column.Compiled]
         var renamedFields:[(expr: ExprSyntax, from: String, to: String)]
         var removedFields:[(expr: ExprSyntax, name: String)]
     }
@@ -369,8 +369,8 @@ extension ModelRevision {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
-        var addedFields = [ModelRevision.Field.Compiled]()
-        var updatedFields = [ModelRevision.Field.Compiled]()
+        var addedFields = [ModelRevision.Column.Compiled]()
+        var updatedFields = [ModelRevision.Column.Compiled]()
         var renamedFields = [(ExprSyntax, String, String)]()
         var removedFields = [(expr: ExprSyntax, name: String)]()
         for arg in functionCall.arguments {
@@ -416,14 +416,14 @@ extension ModelRevision {
     private static func parseDictionaryString(
         context: some MacroExpansionContext,
         expr: ExprSyntax
-    ) -> [ModelRevision.Field.Compiled] {
+    ) -> [ModelRevision.Column.Compiled] {
         guard let array = expr.array?.elements else {
             context.diagnose(DiagnosticMsg.expectedArrayExpr(expr: expr))
             return []
         }
-        var fields = [ModelRevision.Field.Compiled]()
+        var fields = [ModelRevision.Column.Compiled]()
         for element in array {
-            if let field = ModelRevision.Field.parse(context: context, expr: element.expression) {
+            if let field = ModelRevision.Column.parse(context: context, expr: element.expression) {
                 fields.append(field)
             }
         }

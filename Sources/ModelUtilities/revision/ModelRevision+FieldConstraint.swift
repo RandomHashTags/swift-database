@@ -1,5 +1,5 @@
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public enum Constraint: Hashable, Sendable {
         case notNull
         case check(leftFieldName: String, rightFieldName: String)

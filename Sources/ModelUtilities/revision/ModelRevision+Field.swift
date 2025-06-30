@@ -5,9 +5,9 @@ import FoundationEssentials
 import Foundation
 #endif
 
-// MARK: Field
+// MARK: Column
 extension ModelRevision {
-    public struct Field: Sendable {
+    public struct Column: Sendable {
         public static let defaultBehavior:Set<Behavior> = []
 
         public let name:String
@@ -79,7 +79,8 @@ extension ModelRevision {
 }
 
 // MARK: Behavior
-extension ModelRevision.Field {
+extension ModelRevision.Column {
+    /// Settings that help automate functionality and the contents of the macro expansion for a model.
     public enum Behavior: String, Hashable, Sendable {
         /// Whether or not prepared statements are auto-generated for the field
         case dontCreatePreparedStatements
@@ -87,18 +88,31 @@ extension ModelRevision.Field {
         /// Whether or not migrations are auto-generated for the field
         case dontCreateMigrations
 
-        /// Whether or not this field is absent for the auto-generated prepared statements relating to inserting its value
+        /// Indicates this field enables soft deletion of the model.
+        /// 
+        /// Soft-deleted models still exist in the database after deletion (unless force-deleted) and will not be returned by queries implictly.
+        case enablesSoftDeletion
+
+        /// Whether or not this field is absent for the auto-generated prepared statements relating to inserting a model
         case notInsertable
 
-        /// Whether or not this field is absent for the auto-generated prepared statements relating to updating its value
+        /// Whether or not this field is absent for the auto-generated prepared statements relating to updating the model
         case notUpdatable
+
+        /// Indicates this field records when the model was restored.
+        /// 
+        /// Models require a field that enables soft deletion for this to work properly.
+        case restoration
+
+        /// An SQL value that is set for this field when the model is updated
+        //case onUpdateValue(String?)
     }
 }
 
-// MARK: Field convenience
-extension ModelRevision.Field {
+// MARK: Column convenience
+extension ModelRevision.Column {
     public static func optional(
-        _ field: ModelRevision.Field
+        _ field: ModelRevision.Column
     ) -> Self {
         var constraints = field.constraints
         let disallowed:Set<Constraint> = [.notNull, .primaryKey]
@@ -116,7 +130,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func primaryKey(
         name: String,
         variableName: String? = nil,
@@ -133,7 +147,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func primaryKeyReference<Schema: RawModelIdentifier, Table: RawModelIdentifier, FieldName: RawModelIdentifier>(
         referencing: (schema: Schema, table: Table, fieldName: FieldName),
         name: String,
@@ -171,7 +185,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func bool(
         name: String,
         variableName: String? = nil,
@@ -190,7 +204,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func date(
         name: String,
         variableName: String? = nil,
@@ -244,7 +258,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func double(
         name: String,
         variableName: String? = nil,
@@ -269,7 +283,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func float(
         name: String,
         variableName: String? = nil,
@@ -294,7 +308,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func int16(
         name: String,
         variableName: String? = nil,
@@ -345,7 +359,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func string(
         name: String,
         variableName: String? = nil,
@@ -381,7 +395,7 @@ extension ModelRevision.Field {
     }
 }
 
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     public static func uuid(
         name: String,
         variableName: String? = nil,

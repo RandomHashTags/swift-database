@@ -12,7 +12,7 @@ extension ModelMacro {
         schemaAlias: String?,
         table: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
-        fields: [ModelRevision.Field.Compiled]
+        fields: [ModelRevision.Column.Compiled]
     ) -> String {
         var string = ""
         if supportedDatabases.contains(.postgreSQL) {
@@ -29,7 +29,7 @@ extension ModelMacro {
         schemaAlias: String?,
         table: String,
         selectFilters: [(fields: [String], condition: ModelCondition)],
-        fields: [ModelRevision.Field.Compiled]
+        fields: [ModelRevision.Column.Compiled]
     ) -> String {
         let schemaTable = schema + "." + table
         var preparedStatements = [PreparedStatement]()
@@ -87,7 +87,7 @@ extension ModelMacro {
 
         for (selectFields, condition) in selectFilters {
             let sql = "SELECT \(selectFields.joined(separator: ", ")) FROM \(schemaTable) WHERE " + condition.sql
-            var selectFieldsAndDataTypes = [ModelRevision.Field.Compiled]()
+            var selectFieldsAndDataTypes = [ModelRevision.Column.Compiled]()
             for field in selectFields {
                 if let target = fields.first(where: { $0.columnName == field }) {
                     selectFieldsAndDataTypes.append(target)

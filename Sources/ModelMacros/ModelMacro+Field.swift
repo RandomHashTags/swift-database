@@ -5,7 +5,7 @@ import SwiftSyntax
 import SwiftSyntaxMacros
 
 // MARK: Parse field
-extension ModelRevision.Field {
+extension ModelRevision.Column {
     struct Compiled: Equatable {
         let expr:ExprSyntax
         var columnName:String
@@ -13,7 +13,7 @@ extension ModelRevision.Field {
         var constraints:[Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
-        var behavior:Set<ModelRevision.Field.Behavior>
+        var behavior:Set<ModelRevision.Column.Behavior>
 
         var isRequired: Bool {
             constraints.contains(.primaryKey) || constraints.contains(.notNull)
@@ -31,9 +31,9 @@ extension ModelRevision.Field {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
-        var constraints:[ModelRevision.Field.Constraint] = [.notNull]
+        var constraints:[ModelRevision.Column.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
-        var behavior:Set<ModelRevision.Field.Behavior> = ModelRevision.Field.defaultBehavior
+        var behavior:Set<ModelRevision.Column.Behavior> = ModelRevision.Column.defaultBehavior
         switch functionCall.calledExpression.memberAccess?.declName.baseName.text {
         case "init":
             break
@@ -131,7 +131,7 @@ extension ModelRevision.Field {
         expr: ExprSyntax,
         functionCall: FunctionCallExprSyntax,
         constraints: [Constraint],
-        behavior: Set<ModelRevision.Field.Behavior>,
+        behavior: Set<ModelRevision.Column.Behavior>,
         postgresDataType: PostgresDataType?
     ) -> Compiled? {
         var columnName:String? = nil
@@ -139,7 +139,7 @@ extension ModelRevision.Field {
         var constraints = constraints
         var postgresDataType = postgresDataType
         var defaultValue:String? = nil
-        var behavior:Set<ModelRevision.Field.Behavior> = behavior
+        var behavior:Set<ModelRevision.Column.Behavior> = behavior
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
@@ -213,7 +213,7 @@ extension ModelRevision.Field {
 }
 
 // MARK: Parse field constraint
-extension ModelRevision.Field.Constraint {
+extension ModelRevision.Column.Constraint {
     static func parse(
         context: some MacroExpansionContext,
         expr: ExprSyntax
@@ -279,7 +279,7 @@ extension ModelRevision.Field.Constraint {
 }
 
 // MARK: Extensions
-extension Array where Element == ModelRevision.Field.Compiled {
+extension Array where Element == ModelRevision.Column.Compiled {
     var primaryKey: Element? {
         self.first(where: { $0.constraints.contains(.primaryKey) })
     }
