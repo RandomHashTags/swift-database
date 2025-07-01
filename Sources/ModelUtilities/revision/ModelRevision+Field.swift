@@ -130,6 +130,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Primary key
 extension ModelRevision.Column {
     public static func primaryKey(
         name: String,
@@ -147,6 +148,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Primary key reference
 extension ModelRevision.Column {
     public static func primaryKeyReference<Schema: RawModelIdentifier, Table: RawModelIdentifier, FieldName: RawModelIdentifier>(
         referencing: (schema: Schema, table: Table, fieldName: FieldName),
@@ -185,6 +187,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Bool
 extension ModelRevision.Column {
     public static func bool(
         name: String,
@@ -204,6 +207,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Date
 extension ModelRevision.Column {
     public static func date(
         name: String,
@@ -221,43 +225,9 @@ extension ModelRevision.Column {
             behavior: behavior
         )
     }
-
-    public static func timestampNoTimeZone(
-        name: String,
-        variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
-        precision: UInt8 = 0,
-        defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
-    ) -> Self {
-        .init(
-            name: name,
-            variableName: variableName,
-            constraints: constraints,
-            postgresDataType: .timestampNoTimeZone(precision: precision),
-            defaultValue: defaultValue,
-            behavior: behavior
-        )
-    }
-    public static func timestampWithTimeZone(
-        name: String,
-        variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
-        precision: UInt8 = 0,
-        defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
-    ) -> Self {
-        .init(
-            name: name,
-            variableName: variableName,
-            constraints: constraints,
-            postgresDataType: .timestampWithTimeZone(precision: precision),
-            defaultValue: defaultValue,
-            behavior: behavior
-        )
-    }
 }
 
+// MARK: Double
 extension ModelRevision.Column {
     public static func double(
         name: String,
@@ -283,6 +253,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Float
 extension ModelRevision.Column {
     public static func float(
         name: String,
@@ -308,6 +279,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Integers
 extension ModelRevision.Column {
     public static func int16(
         name: String,
@@ -359,6 +331,7 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: String
 extension ModelRevision.Column {
     public static func string(
         name: String,
@@ -395,6 +368,68 @@ extension ModelRevision.Column {
     }
 }
 
+// MARK: Timestamp
+extension ModelRevision.Column {
+    public static func timestampNoTimeZone(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        precision: UInt8 = 0,
+        defaultValue: String? = nil,
+        behavior: Set<Behavior> = Self.defaultBehavior
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .timestampNoTimeZone(precision: precision),
+            defaultValue: defaultValue,
+            behavior: behavior
+        )
+    }
+    public static func creationTimestamp(
+        name: String = "created",
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        precision: UInt8 = 0,
+        behavior: Set<Behavior> = Self.defaultBehavior
+    ) -> Self {
+        return .timestampNoTimeZone(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            precision: precision,
+            defaultValue: .sqlNow(),
+            behavior: behavior.union([
+                .dontCreatePreparedStatements,
+                .notInsertable,
+                .notUpdatable
+            ])
+        )
+    }
+}
+// MARK: Timestamp + zone
+extension ModelRevision.Column {
+    public static func timestampWithTimeZone(
+        name: String,
+        variableName: String? = nil,
+        constraints: [Constraint] = [.notNull],
+        precision: UInt8 = 0,
+        defaultValue: String? = nil,
+        behavior: Set<Behavior> = Self.defaultBehavior
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .timestampWithTimeZone(precision: precision),
+            defaultValue: defaultValue,
+            behavior: behavior
+        )
+    }
+}
+
+// MARK: UUID
 extension ModelRevision.Column {
     public static func uuid(
         name: String,

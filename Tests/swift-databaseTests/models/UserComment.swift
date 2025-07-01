@@ -17,15 +17,7 @@ import SwiftDatabaseBlueprint
         .init(
             addedFields: [
                 .primaryKey(name: "id"),
-                .timestampNoTimeZone(
-                    name: "created",
-                    defaultValue: .sqlNow(),
-                    behavior: [
-                        .dontCreatePreparedStatements,
-                        .notInsertable,
-                        .notUpdatable
-                    ]
-                ),
+                .creationTimestamp(),
                 .optional(
                     .timestampNoTimeZone(
                         name: "last_updated",

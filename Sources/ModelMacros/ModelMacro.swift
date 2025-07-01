@@ -165,11 +165,11 @@ extension ModelMacro {
             )
             for field in revision.addedFields {
                 if latestFieldKeys.contains(field.columnName) {
-                    context.diagnose(DiagnosticMsg.fieldAlreadyExists(expr: field.expr))
+                    context.diagnose(DiagnosticMsg.fieldAlreadyExists(column: field))
                     return nil
                 } else {
                     if !isInitial && field.constraints.contains(.notNull) && field.defaultValue == nil {
-                        context.diagnose(DiagnosticMsg.notNullFieldMissingDefaultValue(expr: field.expr))
+                        context.diagnose(DiagnosticMsg.notNullFieldMissingDefaultValue(column: field))
                         return nil
                     }
                     latestFields.append(field)
@@ -180,14 +180,14 @@ extension ModelMacro {
             for field in revision.updatedFields {
                 if let index = latestFields.firstIndex(where: { $0.columnName == field.columnName }) {
                     if latestFields[index].postgresDataType == field.postgresDataType {
-                        context.diagnose(DiagnosticMsg.cannotUpdateFieldWithIdenticalDataType(expr: field.expr))
+                        context.diagnose(DiagnosticMsg.cannotUpdateFieldWithIdenticalDataType(column: field))
                     } else {
                         latestFields[index].variableName = field.variableName
                         latestFields[index].postgresDataType = field.postgresDataType
                         validRevision.updatedFields.append(field)
                     }
                 } else {
-                    context.diagnose(DiagnosticMsg.cannotUpdateFieldThatDoesntExist(expr: field.expr))
+                    context.diagnose(DiagnosticMsg.cannotUpdateFieldThatDoesntExist(column: field))
                 }
             }
             for field in revision.removedFields {
@@ -196,7 +196,7 @@ extension ModelMacro {
                     latestFieldKeys.remove(field.name)
                     validRevision.removedFields.append(field)
                 } else {
-                    context.diagnose(DiagnosticMsg.cannotRemoveFieldThatDoesntExist(expr: field.expr))
+                    context.diagnose(DiagnosticMsg.cannotRemoveFieldThatDoesntExist(expr: field.expr, columnName: field.name))
                 }
             }
             for field in revision.renamedFields {
@@ -212,7 +212,7 @@ extension ModelMacro {
                         return nil
                     }
                 } else {
-                    context.diagnose(DiagnosticMsg.cannotRenameFieldThatDoesntExist(expr: field.expr))
+                    context.diagnose(DiagnosticMsg.cannotRenameFieldThatDoesntExist(expr: field.expr, columnName: field.from))
                 }
             }
             // make sure a primary key exists after applying this revision

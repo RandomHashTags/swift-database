@@ -31,10 +31,13 @@ extension ModelRevision.Column {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
+        var columnName:String? = nil
         var constraints:[ModelRevision.Column.Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
+        var defaultValue:String? = nil
         var behavior:Set<ModelRevision.Column.Behavior> = ModelRevision.Column.defaultBehavior
-        switch functionCall.calledExpression.memberAccess?.declName.baseName.text {
+        let declName = functionCall.calledExpression.memberAccess?.declName.baseName.text
+        switch declName {
         case "init":
             break
         case "optional":
@@ -92,7 +95,7 @@ extension ModelRevision.Column {
                 }
                 postgresDataType = .characterVarying(count: value)
             }
-        case "timestampNoTimeZone":
+        case "creationTimestamp", "timestampNoTimeZone":
             postgresDataType = .timestampNoTimeZone(precision: 0)
             if let precision = functionCall.arguments.first(where: { $0.label?.text == "precision" }) {
                 guard let literal = precision.expression.as(IntegerLiteralExprSyntax.self)?.literal.text,
@@ -101,6 +104,15 @@ extension ModelRevision.Column {
                     return nil
                 }
                 postgresDataType = .timestampNoTimeZone(precision: value)
+            }
+            if declName == "creationTimestamp" {
+                columnName = "created"
+                defaultValue = .sqlNow()
+                behavior.formUnion([
+                    .dontCreatePreparedStatements,
+                    .notInsertable,
+                    .notUpdatable
+                ])
             }
         case "timestampWithTimeZone":
             postgresDataType = .timestampWithTimeZone(precision: 0)
@@ -121,7 +133,9 @@ extension ModelRevision.Column {
             context: context,
             expr: expr,
             functionCall: functionCall,
+            columnName: columnName,
             constraints: constraints,
+            defaultValue: defaultValue,
             behavior: behavior,
             postgresDataType: postgresDataType
         )
@@ -130,15 +144,17 @@ extension ModelRevision.Column {
         context: some MacroExpansionContext,
         expr: ExprSyntax,
         functionCall: FunctionCallExprSyntax,
+        columnName: String?,
         constraints: [Constraint],
+        defaultValue: String?,
         behavior: Set<ModelRevision.Column.Behavior>,
         postgresDataType: PostgresDataType?
     ) -> Compiled? {
-        var columnName:String? = nil
+        var columnName:String? = columnName
         var variableName:String? = nil
         var constraints = constraints
         var postgresDataType = postgresDataType
-        var defaultValue:String? = nil
+        var defaultValue:String? = defaultValue
         var behavior:Set<ModelRevision.Column.Behavior> = behavior
         for arg in functionCall.arguments {
             switch arg.label?.text {
@@ -166,24 +182,15 @@ extension ModelRevision.Column {
                     defaultValue = s
                 } else if let s = arg.expression.functionCall?.calledExpression.memberAccess?.declName.baseName.text {
                     switch s {
-                    case "sqlEpoch":
-                        defaultValue = "'epoch()'"
-                    case "sqlInfinity":
-                        defaultValue = "'infinity()'"
-                    case "sqlNegativeInfinity":
-                        defaultValue = "'-infinity()'"
-                    case "sqlNow":
-                        defaultValue = "'now()'"
-                    case "sqlToday":
-                        defaultValue = "'today()'"
-                    case "sqlTomorrow":
-                        defaultValue = "'tomorrow()'"
-                    case "sqlYesterday":
-                        defaultValue = "'yesterday()'"
-                    case "allballs":
-                        defaultValue = "'allballs()'"
-                    default:
-                        break
+                    case "sqlEpoch":            defaultValue = .sqlEpoch()
+                    case "sqlInfinity":         defaultValue = .sqlInfinity()
+                    case "sqlNegativeInfinity": defaultValue = .sqlNegativeInfinity()
+                    case "sqlNow":              defaultValue = .sqlNow()
+                    case "sqlToday":            defaultValue = .sqlToday()
+                    case "sqlTomorrow":         defaultValue = .sqlTomorrow()
+                    case "sqlYesterday":        defaultValue = .sqlYesterday()
+                    case "allballs":            defaultValue = .allballs()
+                    default:                    break
                     }
                 }
             case "behavior":
@@ -280,14 +287,17 @@ extension ModelRevision.Column.Constraint {
 
 // MARK: Extensions
 extension Array where Element == ModelRevision.Column.Compiled {
+    /// - Complexity: O(*n*), where *n* is the length of the sequence.
     var primaryKey: Element? {
         self.first(where: { $0.constraints.contains(.primaryKey) })
     }
 
+    /// - Complexity: O(*n*), where *n* is the length of the sequence.
     var insertableFields: Self {
         self.filter { !$0.behavior.contains(.notInsertable) }
     }
 
+    /// - Complexity: O(*n*), where *n* is the length of the sequence.
     var updatableFields: Self {
         self.filter { !$0.behavior.contains(.notUpdatable) }
     }
