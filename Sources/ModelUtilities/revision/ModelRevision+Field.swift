@@ -8,23 +8,24 @@ import Foundation
 // MARK: Column
 extension ModelRevision {
     public struct Column: Sendable {
+        public static let defaultConstraints:Set<Constraint> = [.notNull]
         public static let defaultBehavior:Set<Behavior> = []
 
         public let name:String
         public let variableName:String
-        public let constraints:[Constraint]
-        public package(set) var postgresDataType:PostgresDataType?
+        public let constraints:Set<Constraint>
         public let defaultValue:String?
-
         public let behavior:Set<Behavior>
+
+        public package(set) var postgresDataType:PostgresDataType?
 
         public init(
             name: String,
             variableName: String? = nil,
-            constraints: [Constraint] = [.notNull],
+            constraints: Set<Constraint> = defaultConstraints,
             postgresDataType: PostgresDataType?,
             defaultValue: String? = nil,
-            behavior: Set<Behavior> = Self.defaultBehavior
+            behavior: Set<Behavior> = defaultBehavior
         ) {
             self.name = name
             self.variableName = variableName ?? name
@@ -37,10 +38,10 @@ extension ModelRevision {
         public init(
             name: String,
             variableName: String? = nil,
-            constraints: [Constraint] = [.notNull],
+            constraints: Set<Constraint> = defaultConstraints,
             postgresDataType: PostgresDataType? = nil,
             defaultValue: Bool,
-            behavior: Set<Behavior> = Self.defaultBehavior
+            behavior: Set<Behavior> = defaultBehavior
         ) {
             self.init(
                 name: name,
@@ -55,10 +56,10 @@ extension ModelRevision {
         public init<T: FixedWidthInteger>(
             name: String,
             variableName: String? = nil,
-            constraints: [Constraint] = [.notNull],
+            constraints: Set<Constraint> = defaultConstraints,
             postgresDataType: PostgresDataType? = nil,
             defaultValue: T?,
-            behavior: Set<Behavior> = Self.defaultBehavior
+            behavior: Set<Behavior> = defaultBehavior
         ) {
             let dv:String?
             if let defaultValue {
@@ -110,15 +111,19 @@ extension ModelRevision.Column {
 }
 
 // MARK: Column convenience
+
+
+
+
+
+// MARK: Optional
 extension ModelRevision.Column {
     public static func optional(
         _ field: ModelRevision.Column
     ) -> Self {
         var constraints = field.constraints
-        let disallowed:Set<Constraint> = [.notNull, .primaryKey]
-        while let i = constraints.firstIndex(where: { disallowed.contains($0) }) {
-            constraints.remove(at: i)
-        }
+        constraints.remove(.notNull)
+        constraints.remove(.primaryKey)
         return .init(
             name: field.name,
             variableName: field.variableName,
@@ -135,7 +140,7 @@ extension ModelRevision.Column {
     public static func primaryKey(
         name: String,
         variableName: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         return .init(
             name: name,
@@ -154,7 +159,7 @@ extension ModelRevision.Column {
         referencing: (schema: Schema, table: Table, fieldName: FieldName),
         name: String,
         variableName: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         return primaryKeyReference(
             referencing: (referencing.schema.rawValue, referencing.table.rawValue, referencing.fieldName.rawValue),
@@ -167,7 +172,7 @@ extension ModelRevision.Column {
         referencing: (schema: String, table: String, fieldName: String),
         name: String,
         variableName: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         return .init(
             name: name,
@@ -192,9 +197,9 @@ extension ModelRevision.Column {
     public static func bool(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: Bool = false,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -212,9 +217,9 @@ extension ModelRevision.Column {
     public static func date(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: String,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -232,9 +237,9 @@ extension ModelRevision.Column {
     public static func double(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: Double? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         let dv:String?
         if let defaultValue {
@@ -258,9 +263,9 @@ extension ModelRevision.Column {
     public static func float(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: Float? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         let dv:String?
         if let defaultValue {
@@ -284,9 +289,9 @@ extension ModelRevision.Column {
     public static func int16(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: Int16? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -300,9 +305,9 @@ extension ModelRevision.Column {
     public static func int32(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: Int32? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -316,9 +321,9 @@ extension ModelRevision.Column {
     public static func int64(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: Int64? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -336,9 +341,9 @@ extension ModelRevision.Column {
     public static func string(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -352,10 +357,10 @@ extension ModelRevision.Column {
     public static func string(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         length: UInt64,
         defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -373,10 +378,10 @@ extension ModelRevision.Column {
     public static func timestampNoTimeZone(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         precision: UInt8 = 0,
         defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -390,11 +395,11 @@ extension ModelRevision.Column {
     public static func creationTimestamp(
         name: String = "created",
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         precision: UInt8 = 0,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
-        return .timestampNoTimeZone(
+        .timestampNoTimeZone(
             name: name,
             variableName: variableName,
             constraints: constraints,
@@ -407,16 +412,60 @@ extension ModelRevision.Column {
             ])
         )
     }
+    public static func deletionTimestamp(
+        name: String = "deleted",
+        variableName: String? = nil,
+        constraints: Set<Constraint> = defaultConstraints,
+        precision: UInt8 = 0,
+        behavior: Set<Behavior> = defaultBehavior
+    ) -> Self {
+        .optional(
+            .timestampNoTimeZone(
+                name: name,
+                variableName: variableName,
+                constraints: constraints,
+                precision: precision,
+                behavior: behavior.union([
+                    .dontCreatePreparedStatements,
+                    .notInsertable,
+                    .notUpdatable,
+                    .enablesSoftDeletion
+                ])
+            )
+        )
+    }
+    public static func restorationTimestamp(
+        name: String = "restored",
+        variableName: String? = nil,
+        constraints: Set<Constraint> = defaultConstraints,
+        precision: UInt8 = 0,
+        behavior: Set<Behavior> = defaultBehavior
+    ) -> Self {
+        .optional(
+            .timestampNoTimeZone(
+                name: name,
+                variableName: variableName,
+                constraints: constraints,
+                precision: precision,
+                behavior: behavior.union([
+                    .dontCreatePreparedStatements,
+                    .notInsertable,
+                    .notUpdatable,
+                    .restoration
+                ])
+            )
+        )
+    }
 }
 // MARK: Timestamp + zone
 extension ModelRevision.Column {
     public static func timestampWithTimeZone(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         precision: UInt8 = 0,
         defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,
@@ -434,9 +483,9 @@ extension ModelRevision.Column {
     public static func uuid(
         name: String,
         variableName: String? = nil,
-        constraints: [Constraint] = [.notNull],
+        constraints: Set<Constraint> = defaultConstraints,
         defaultValue: String? = nil,
-        behavior: Set<Behavior> = Self.defaultBehavior
+        behavior: Set<Behavior> = defaultBehavior
     ) -> Self {
         .init(
             name: name,

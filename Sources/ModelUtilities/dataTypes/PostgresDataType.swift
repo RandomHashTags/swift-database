@@ -559,7 +559,7 @@ extension PostgresDataType {
 
         case .int4range: "(Int32, Int32)"
         case .int8range: "(Int64, Int64)"
-        case .numrange:  "(Double, Double)" // TOOD: fix
+        case .numrange:  "(Double, Double)" // TODO: fix
         case .tsrange:   "(String, String)" // TODO: fix?
         case .tstzrange: "(String, String)" // TODO: fix?
         case .daterange: "(Date, Date)"

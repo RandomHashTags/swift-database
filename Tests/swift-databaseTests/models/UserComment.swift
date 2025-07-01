@@ -18,20 +18,12 @@ import SwiftDatabaseBlueprint
             addedFields: [
                 .primaryKey(name: "id"),
                 .creationTimestamp(),
+                .deletionTimestamp(),
+                .restorationTimestamp(),
                 .optional(
                     .timestampNoTimeZone(
                         name: "last_updated",
                         variableName: "lastUpdated",
-                        behavior: [
-                            .dontCreatePreparedStatements,
-                            .notInsertable,
-                            .notUpdatable
-                        ]
-                    )
-                ),
-                .optional(
-                    .timestampNoTimeZone(
-                        name: "deleted",
                         behavior: [
                             .dontCreatePreparedStatements,
                             .notInsertable,

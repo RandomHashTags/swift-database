@@ -34,9 +34,11 @@ extension ModelMacro {
                 context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
             }
         }
+        let primaryKeyColumnName:String?
         let requireID:String
         let primaryKeyString:String
         if let primaryKeyField = fields.primaryKey {
+            primaryKeyColumnName = primaryKeyField.columnName
             requireID = "let \(primaryKeyField.columnName) = try requireID()\n"
             if primaryKeyField.postgresDataType == .serial || primaryKeyField.postgresDataType == .bigserial {
                 primaryKeyString = ""
@@ -44,6 +46,7 @@ extension ModelMacro {
                 primaryKeyString = requireID
             }
         } else {
+            primaryKeyColumnName = nil
             requireID = ""
             primaryKeyString = ""
         }
@@ -68,12 +71,63 @@ extension ModelMacro {
         string += "return self\n"
         string += "}\n\n"
 
-        string += "@discardableResult\n@inlinable\npublic \(mutationKeyword)func update<T: PostgresQueryableProtocol & ~Copyable>(\n"
-        string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
-        string += requireID
-        string += "let response = try await PostgresPreparedStatements.update.execute(\non: &queryable,\nparameters: (\(updatableFieldsJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
-        string += "return self\n"
-        string += "}"
+        string += """
+        @discardableResult
+        @inlinable
+        public \(mutationKeyword)func update<T: PostgresQueryableProtocol & ~Copyable>(
+            on queryable: inout T,
+            explain: Bool = false,
+            analyze: Bool = false
+        ) async throws -> Self {
+            \(requireID)let response = try await PostgresPreparedStatements.update.execute(
+                on: &queryable,
+                parameters: (\(updatableFieldsJoined)),
+                explain: explain,
+                analyze: analyze
+            ).requireNotError()
+            return self
+        }
+        """
+
+        if let primaryKeyColumnName, let softDeletionField = fields.softDeletionField {
+            string += """
+            @discardableResult
+            @inlinable
+            public \(mutationKeyword)func softDelete<T: PostgresQueryableProtocol & ~Copyable>(
+                on queryable: inout T,
+                explain: Bool = false,
+                analyze: Bool = false
+            ) async throws -> Self {
+                \(requireID)let response = try await PostgresPreparedStatements.softDelete.execute(
+                    on: &queryable,
+                    parameters: (\(primaryKeyColumnName)),
+                    explain: explain,
+                    analyze: analyze
+                ).requireNotError()
+                return self
+            }
+            """
+
+            if let restorationField = fields.restorationField {
+                string += """
+                @discardableResult
+                @inlinable
+                public \(mutationKeyword)func restore<T: PostgresQueryableProtocol & ~Copyable>(
+                    on queryable: inout T,
+                    explain: Bool = false,
+                    analyze: Bool = false
+                ) async throws -> Self {
+                    \(requireID)let response = try await PostgresPreparedStatements.restore.execute(
+                        on: &queryable,
+                        parameters: (\(primaryKeyColumnName)),
+                        explain: explain,
+                        analyze: analyze
+                    ).requireNotError()
+                    return self
+                }
+                """
+            }
+        }
         return string
     }
 }

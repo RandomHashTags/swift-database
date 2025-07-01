@@ -31,19 +31,20 @@ extension ModelRevision.Column {
             context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
             return nil
         }
+        let disallowedOptionalConstraints:Set<Constraint> = [.notNull, .primaryKey]
+
         var columnName:String? = nil
-        var constraints:[ModelRevision.Column.Constraint] = [.notNull]
+        var constraints:[Constraint] = [.notNull]
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
-        var behavior:Set<ModelRevision.Column.Behavior> = ModelRevision.Column.defaultBehavior
+        var behavior:Set<Behavior> = defaultBehavior
         let declName = functionCall.calledExpression.memberAccess?.declName.baseName.text
         switch declName {
         case "init":
             break
         case "optional":
             if let inner = functionCall.arguments.first?.expression, var v = parse(context: context, expr: inner) {
-                let disallowed:Set<Constraint> = [.notNull, .primaryKey]
-                v.constraints.removeAll(where: { disallowed.contains($0) })
+                v.constraints.removeAll(where: { disallowedOptionalConstraints.contains($0) })
                 return v
             }
         case "primaryKey":
@@ -95,7 +96,7 @@ extension ModelRevision.Column {
                 }
                 postgresDataType = .characterVarying(count: value)
             }
-        case "creationTimestamp", "timestampNoTimeZone":
+        case "creationTimestamp", "deletionTimestamp", "restorationTimestamp", "timestampNoTimeZone":
             postgresDataType = .timestampNoTimeZone(precision: 0)
             if let precision = functionCall.arguments.first(where: { $0.label?.text == "precision" }) {
                 guard let literal = precision.expression.as(IntegerLiteralExprSyntax.self)?.literal.text,
@@ -105,7 +106,8 @@ extension ModelRevision.Column {
                 }
                 postgresDataType = .timestampNoTimeZone(precision: value)
             }
-            if declName == "creationTimestamp" {
+            switch declName {
+            case "creationTimestamp":
                 columnName = "created"
                 defaultValue = .sqlNow()
                 behavior.formUnion([
@@ -113,6 +115,26 @@ extension ModelRevision.Column {
                     .notInsertable,
                     .notUpdatable
                 ])
+            case "deletionTimestamp":
+                columnName = "deleted"
+                constraints.removeAll(where: { disallowedOptionalConstraints.contains($0) })
+                behavior.formUnion([
+                    .dontCreatePreparedStatements,
+                    .notInsertable,
+                    .notUpdatable,
+                    .enablesSoftDeletion
+                ])
+            case "restorationTimestamp":
+                columnName = "restored"
+                constraints.removeAll(where: { disallowedOptionalConstraints.contains($0) })
+                behavior.formUnion([
+                    .dontCreatePreparedStatements,
+                    .notInsertable,
+                    .notUpdatable,
+                    .restoration
+                ])
+            default:
+                break
             }
         case "timestampWithTimeZone":
             postgresDataType = .timestampWithTimeZone(precision: 0)
@@ -150,12 +172,12 @@ extension ModelRevision.Column {
         behavior: Set<ModelRevision.Column.Behavior>,
         postgresDataType: PostgresDataType?
     ) -> Compiled? {
-        var columnName:String? = columnName
+        var columnName = columnName
         var variableName:String? = nil
         var constraints = constraints
         var postgresDataType = postgresDataType
-        var defaultValue:String? = defaultValue
-        var behavior:Set<ModelRevision.Column.Behavior> = behavior
+        var defaultValue = defaultValue
+        var behavior = behavior
         for arg in functionCall.arguments {
             switch arg.label?.text {
             case "name":
@@ -287,18 +309,23 @@ extension ModelRevision.Column.Constraint {
 
 // MARK: Extensions
 extension Array where Element == ModelRevision.Column.Compiled {
-    /// - Complexity: O(*n*), where *n* is the length of the sequence.
     var primaryKey: Element? {
         self.first(where: { $0.constraints.contains(.primaryKey) })
     }
 
-    /// - Complexity: O(*n*), where *n* is the length of the sequence.
     var insertableFields: Self {
         self.filter { !$0.behavior.contains(.notInsertable) }
     }
 
-    /// - Complexity: O(*n*), where *n* is the length of the sequence.
     var updatableFields: Self {
         self.filter { !$0.behavior.contains(.notUpdatable) }
+    }
+
+    var softDeletionField: Element? {
+        self.first(where: { $0.behavior.contains(.enablesSoftDeletion) })
+    }
+
+    var restorationField: Element? {
+        self.first(where: { $0.behavior.contains(.restoration) })
     }
 }

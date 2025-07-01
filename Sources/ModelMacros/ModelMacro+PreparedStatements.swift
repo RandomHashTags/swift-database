@@ -37,25 +37,67 @@ extension ModelMacro {
         let insertableFields = fields.insertableFields
         let insertFieldsJoined = insertableFields.map { $0.columnName }.joined(separator: ", ")
         let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertableFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
-        preparedStatements.append(.init(name: "insert", parameters: insertableFields, returnedColumns: [], sql: insertSQL))
-        preparedStatements.append(.init(name: "insertReturning", parameters: insertableFields, returnedColumns: fields, sql: insertSQL + " RETURNING \(allColumnsJoined)"))
+        preparedStatements.append(.init(name: "insert",
+            parameters: insertableFields,
+            returnedColumns: [],
+            sql: insertSQL
+        ))
+        preparedStatements.append(.init(
+            name: "insertReturning",
+            parameters: insertableFields,
+            returnedColumns: fields,
+            sql: insertSQL + " RETURNING \(allColumnsJoined)"
+        ))
 
         if let primaryKeyField = fields.primaryKey {
             let updatableFields = fields.updatableFields
             let updateSQL = "UPDATE \(schemaTable) SET " + updatableFields.enumerated().map {
                 $0.element.columnName + " = $\($0.offset+2)"
             }.joined(separator: ", ") + " WHERE \(primaryKeyField.columnName) = $1"
-            preparedStatements.append(.init(name: "update", parameters: [primaryKeyField] + updatableFields, returnedColumns: [], sql: updateSQL))
+            preparedStatements.append(.init(
+                name: "update",
+                parameters: [primaryKeyField] + updatableFields,
+                returnedColumns: [],
+                sql: updateSQL
+            ))
+
+            if let softDeletionField = fields.softDeletionField {
+                preparedStatements.append(.init(
+                    name: "softDelete",
+                    parameters: [primaryKeyField],
+                    returnedColumns: [],
+                    sql: "UPDATE \(schemaTable) SET \(softDeletionField.columnName) = " + .sqlNow() + " WHERE \(primaryKeyField.columnName) = $1"
+                ))
+
+                if let restorationField = fields.restorationField {
+                    preparedStatements.append(.init(
+                        name: "restore",
+                        parameters: [primaryKeyField],
+                        returnedColumns: [],
+                        sql: "UPDATE \(schemaTable) SET \(restorationField.columnName) = " + .sqlNow() + " WHERE \(primaryKeyField.columnName) = $1"
+                    ))
+                }
+            }
             
             for field in updatableFields {
                 if !field.behavior.contains(.dontCreatePreparedStatements) {
                     let sql = "UPDATE \(schemaTable) SET \(field.columnName) = $2 WHERE \(primaryKeyField.columnName) = $1"
-                    preparedStatements.append(.init(name: "update\(field.formattedName)", parameters: [primaryKeyField, field], returnedColumns: [], sql: sql))
+                    preparedStatements.append(.init(
+                        name: "update\(field.formattedName)",
+                        parameters: [primaryKeyField, field],
+                        returnedColumns: [],
+                        sql: sql
+                    ))
                 }
             }
 
             let selectSQL = "SELECT \(allColumnsJoined) FROM \(schemaTable) WHERE \(primaryKeyField.columnName) = $1"
-            preparedStatements.append(.init(name: "select", parameters: [primaryKeyField], returnedColumns: fields, sql: selectSQL))
+            preparedStatements.append(.init(
+                name: "select",
+                parameters: [primaryKeyField],
+                returnedColumns: fields,
+                sql: selectSQL
+            ))
         }
         
         let selectAllSQL = "SELECT \(allColumnsJoined) FROM \(schemaTable)"

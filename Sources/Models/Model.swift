@@ -32,18 +32,6 @@ extension Model where IDValue: OptionalProtocol {
 // MARK: Macros
 @attached(extension, names: arbitrary)
 public macro Model<
-    Table: RawModelIdentifier
->(
-    supportedDatabases: [DatabaseType],
-    schema: String = "public",
-    schemaAlias: String? = nil,
-    table: Table,
-    selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
-    revisions: [ModelRevision]
-) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
-
-@attached(extension, names: arbitrary)
-public macro Model<
     Schema: RawModelIdentifier,
     SchemaAlias: RawModelIdentifier,
     Table: RawModelIdentifier
