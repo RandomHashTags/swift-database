@@ -5,10 +5,10 @@ import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-FUNCTIONCALLRESPONSE
 public struct PostgresFunctionCallResponseMessage: PostgresFunctionCallResponseMessageProtocol {
-    public var value:String? // TODO: support binary format
+    public var value:ByteBuffer?
 
     @inlinable
-    public init(value: String?) {
+    public init(value: ByteBuffer?) {
         self.value = value
     }
 }
@@ -23,11 +23,11 @@ extension PostgresFunctionCallResponseMessage {
             throw PostgresError.functionCallResponse("message type != .V")
         }
         let lengthOfFunctionResult:Int32 = message.body.loadUnalignedInt()
-        let value:String?
+        let value:ByteBuffer?
         if lengthOfFunctionResult <= 0 {
             value = nil
         } else {
-            value = message.body.loadStringBigEndian(offset: 4, count: Int(lengthOfFunctionResult))
+            value = message.body.loadByteBufferBigEndian(offset: 4, count: Int(lengthOfFunctionResult))
         }
         return .init(value: value)
     }

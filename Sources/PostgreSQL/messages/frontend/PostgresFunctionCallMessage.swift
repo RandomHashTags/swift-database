@@ -7,14 +7,14 @@ import SwiftDatabaseBlueprint
 public struct PostgresFunctionCallMessage: PostgresFunctionCallMessageProtocol {
     public var objectID:Int32
     public var argumentFormatCodes:[Int16]
-    public var arguments:[String?] // TODO: support binary format
+    public var arguments:[ByteBuffer?]
     public var formatCode:Int16
 
     @inlinable
     public init(
         objectID: Int32,
         argumentFormatCodes: [Int16],
-        arguments: [String?],
+        arguments: [ByteBuffer?],
         formatCode: Int16
     ) { // TODO: finish
         self.objectID = objectID

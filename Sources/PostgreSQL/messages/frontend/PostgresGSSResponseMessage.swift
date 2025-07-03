@@ -5,10 +5,10 @@ import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-GSSRESPONSE
 public struct PostgresGSSResponseMessage: PostgresGSSResponseMessageProtocol {
-    public var data:String // TODO: support binary format
+    public var data:ByteBuffer
 
     @inlinable
-    public init(data: String) {
+    public init(data: ByteBuffer) {
         self.data = data
     }
 }
@@ -35,7 +35,7 @@ extension PostgresGSSResponseMessage {
 // MARK: Convenience
 extension PostgresRawMessage {
     @inlinable
-    public static func gssResponse(data: String) -> PostgresGSSResponseMessage {
+    public static func gssResponse(data: ByteBuffer) -> PostgresGSSResponseMessage {
         return PostgresGSSResponseMessage(data: data)
     }
 }
