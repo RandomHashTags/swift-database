@@ -40,6 +40,7 @@ public macro Model<
     schema: Schema,
     schemaAlias: SchemaAlias? = nil,
     table: Table,
+    partition: TablePartition? = nil,
     selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
     revisions: [ModelRevision]
 ) = #externalMacro(module: "ModelMacros", type: "ModelMacro")
@@ -53,6 +54,7 @@ public macro Model<
     schema: Schema,
     schemaAlias: String? = nil,
     table: Table,
+    partition: TablePartition? = nil,
     selectFilters: [(returnedFields: [String], condition: ModelCondition)] = [],
     revisions: [ModelRevision]
 ) = #externalMacro(module: "ModelMacros", type: "ModelMacro")

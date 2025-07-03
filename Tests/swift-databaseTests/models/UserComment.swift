@@ -67,8 +67,8 @@ struct UserComment: PostgresModel {
     var id:IDValue
 
     var created:Date?
-    var lastUpdated:Date?
     var deleted:Date?
+    var lastUpdated:Date?
 
     var userID:UserAccount.IDValue
 
@@ -76,7 +76,7 @@ struct UserComment: PostgresModel {
 }
 
 extension UserComment {
-    static func postgresDecode(columns: [String?]) throws -> Self? {
+    static func postgresDecode(columns: [ByteBuffer?]) throws -> Self? {
         return nil
     }
 }

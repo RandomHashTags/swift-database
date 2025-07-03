@@ -519,7 +519,7 @@ extension PostgresDataType {
         case .char: "UInt8"
         case .name: "String"
 
-        case .bytea: "[UInt8]" // TODO: fix?
+        case .bytea: "[UInt8]"
 
         case .timestampNoTimeZone, .timestampWithTimeZone: "Date" // TODO: fix?
         case .date: "Date" // TODO: fix

@@ -151,6 +151,18 @@ extension ByteBuffer {
             return String.init(cString: buffer.baseAddress!)
         })
     }
+
+    @inlinable
+    public func loadByteBufferBigEndian(offset: Int, count: Int) -> ByteBuffer {
+        let other = baseAddress! + offset
+        let buffer = ByteBuffer(capacity: count)
+        var i = 0
+        while i < count {
+            buffer[i] = other[i].bigEndian
+            i += 1
+        }
+        return buffer
+    }
 }
 
 // MARK: Write int

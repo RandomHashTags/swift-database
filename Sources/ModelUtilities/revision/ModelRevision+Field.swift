@@ -286,6 +286,22 @@ extension ModelRevision.Column {
 
 // MARK: Integers
 extension ModelRevision.Column {
+    public static func uint8(
+        name: String,
+        variableName: String? = nil,
+        constraints: Set<Constraint> = defaultConstraints,
+        defaultValue: UInt8? = nil,
+        behavior: Set<Behavior> = defaultBehavior
+    ) -> Self {
+        .init(
+            name: name,
+            variableName: variableName,
+            constraints: constraints,
+            postgresDataType: .bytea,
+            defaultValue: defaultValue,
+            behavior: behavior
+        )
+    }
     public static func int16(
         name: String,
         variableName: String? = nil,

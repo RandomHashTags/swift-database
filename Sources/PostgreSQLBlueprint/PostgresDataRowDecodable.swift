@@ -1,4 +1,6 @@
 
+import SwiftDatabaseBlueprint
+
 public protocol PostgresDataRowDecodable: Sendable, ~Copyable {
-    static func postgresDecode(columns: [String?]) throws -> Self?
+    static func postgresDecode(columns: [ByteBuffer?]) throws -> Self?
 }

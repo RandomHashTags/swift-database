@@ -5,6 +5,18 @@ public protocol PostgresDataTypeProtocol: SQLDataTypeProtocol, ~Copyable {
     var postgresValue: String { get }
 }
 
+public struct PostgresUInt8DataType: PostgresDataTypeProtocol, ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = UInt8
+
+    public let value:UInt8
+    public let postgresValue:String
+
+    public init(integerLiteral value: UInt8) {
+        self.value = value
+        postgresValue = "'\(value)'"
+    }
+}
+
 // MARK: Conformances
 
 

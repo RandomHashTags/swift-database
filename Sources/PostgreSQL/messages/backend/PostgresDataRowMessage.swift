@@ -5,10 +5,10 @@ import SwiftDatabaseBlueprint
 
 /// Documentation: https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-DATAROW
 public struct PostgresDataRowMessage: PostgresDataRowMessageProtocol {
-    public var columns:[String?] // TODO: support binary format
+    public var columns:[ByteBuffer?]
 
     @inlinable
-    public init(columns: [String?]) {
+    public init(columns: [ByteBuffer?]) {
         self.columns = columns
     }
 }
@@ -31,18 +31,18 @@ extension PostgresDataRowMessage {
             throw PostgresError.dataRow("message type != .D")
         }
         let numberOfColumnValues:Int16 = message.body.loadUnalignedIntBigEndian()
-        var columns:[String?] = []
+        var columns:[ByteBuffer?] = []
         if numberOfColumnValues > 0 {
             columns.reserveCapacity(Int(numberOfColumnValues))
             var offset = 2
             for _ in 0..<Int(numberOfColumnValues) {
                 let lengthOfColumnValue:Int32 = message.body.loadUnalignedIntBigEndian(offset: offset)
                 offset += 4
-                let result:String?
+                let result:ByteBuffer?
                 if lengthOfColumnValue == -1 {
                     result = nil
                 } else {
-                    result = message.body.loadStringBigEndian(offset: offset, count: Int(lengthOfColumnValue))
+                    result = message.body.loadByteBufferBigEndian(offset: offset, count: Int(lengthOfColumnValue))
                     offset += Int(lengthOfColumnValue)
                 }
                 columns.append(result)

@@ -9,13 +9,20 @@ extension ModelMacro {
         supportedDatabases: Set<DatabaseType>,
         schema: String,
         schemaAlias: String?,
+        partition: TablePartition.Compiled?,
         revisions: [ModelRevision.Compiled]
     ) -> String {
         var migrationsString = ""
         if !revisions.isEmpty {
             if supportedDatabases.contains(.postgreSQL) {
                 migrationsString += "public enum PostgresMigrations {\n"
-                migrationsString += postgresMigrations(context: context, schema: schema, schemaAlias: schemaAlias, revisions: revisions)
+                migrationsString += postgresMigrations(
+                    context: context,
+                    schema: schema,
+                    schemaAlias: schemaAlias,
+                    partition: partition,
+                    revisions: revisions
+                )
                 migrationsString += "\n    }"
             }
         }
@@ -29,6 +36,7 @@ extension ModelMacro {
         context: some MacroExpansionContext,
         schema: String,
         schemaAlias: String?,
+        partition: TablePartition.Compiled?,
         revisions: [ModelRevision.Compiled]
     ) -> String {
         var migrations = [(name: String, sql: String)]()
@@ -49,7 +57,11 @@ extension ModelMacro {
             migrations.append(("createSchema", createSchemaSQL))
         }
 
-        let createTableSQL = "CREATE TABLE IF NOT EXISTS " + schema + "." + initialRevision.tableName + " (" + addedFieldsString + ");"
+        var createTableSQL = "CREATE TABLE IF NOT EXISTS " + schema + "." + initialRevision.tableName + " (" + addedFieldsString + ")"
+        if let partition, let partitionSQL = partition.value.shortSQL(databaseType: .postgreSQL) {
+            createTableSQL += " " + partitionSQL
+        }
+        createTableSQL += ";"
         migrations.append(("createTable", createTableSQL))
 
         var previousTableName = initialRevision.tableName

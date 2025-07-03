@@ -40,6 +40,7 @@ extension ModelMacro: ExtensionMacro {
         var schema:String? = "public"
         var schemaAlias:String? = nil
         var initialTable:String? = nil
+        var partition:TablePartition.Compiled? = nil
         var selectFilters = [(fields: [String], condition: ModelCondition)]()
         var revisions = [ModelRevision.Compiled]()
         for arg in args {
@@ -59,6 +60,8 @@ extension ModelMacro: ExtensionMacro {
                     schemaAlias = child.expression.legalRawModelIdentifier(context: context)
                 case "table":
                     initialTable = child.expression.legalRawModelIdentifier(context: context)
+                case "partition":
+                    partition = .parse(context: context, expr: child.expression)
                 case "revisions":
                     var previousTableName:String? = initialTable
                     var version = 0
@@ -128,6 +131,7 @@ extension ModelMacro: ExtensionMacro {
                 supportedDatabases: supportedDatabases,
                 schema: schema,
                 schemaAlias: schemaAlias,
+                partition: partition,
                 revisions: revisions
             ))
             //members.append(compileSafety(construct: construct, fields: latestFields))
@@ -139,6 +143,81 @@ extension ModelMacro: ExtensionMacro {
             .init(.init(stringLiteral: "extension \(construct.name) {\n\(content)\n}")),
             .init(.init(stringLiteral: convenienceLogicString))
         ]
+    }
+}
+
+// MARK: TablePartition
+extension TablePartition {
+    struct Compiled {
+        let expr:ExprSyntax
+        let value:TablePartition
+
+        static func parse(context: some MacroExpansionContext, expr: ExprSyntax) -> Compiled? {
+            guard let functionCall = expr.functionCall else {
+                context.diagnose(DiagnosticMsg.expectedFunctionCallExpr(expr: expr))
+                return nil
+            }
+            var form:Form? = nil
+            var column:String? = nil
+            for arg in functionCall.arguments {
+                switch arg.label?.text {
+                case "form":
+                    if let formExpr = arg.expression.functionCall {
+                        switch formExpr.calledExpression.memberAccess?.declName.baseName.text {
+                        case "hash":
+                            var modulus:Int? = nil
+                            var remainder:Int? = nil
+                            for arg in formExpr.arguments {
+                                switch arg.label?.text {
+                                case "modulus":
+                                    if let v = arg.expression.integerLiteral?.literal.text {
+                                        modulus = Int(v)
+                                    }
+                                case "remainder":
+                                    if let v = arg.expression.integerLiteral?.literal.text {
+                                        remainder = Int(v)
+                                    }
+                                default:
+                                    break
+                                }
+                            }
+                            if let modulus, let remainder {
+                                form = .hash(modulus: modulus, remainder: remainder)
+                            }
+                        case "list":
+                            if let by = formExpr.arguments.first?.expression.stringLiteral?.text {
+                                form = .list(by: by)
+                            }
+                        case "range":
+                            var from:String? = nil
+                            var to:String? = nil
+                            for arg in formExpr.arguments {
+                                switch arg.label?.text {
+                                case "from":
+                                    from = arg.expression.stringLiteral?.text
+                                case "to":
+                                    to = arg.expression.stringLiteral?.text
+                                default:
+                                    break
+                                }
+                            }
+                            if let from, let to {
+                                form = .range(from: from, to: to)
+                            }
+                        default:
+                            break
+                        }
+                    }
+                    break
+                case "column":
+                    column = arg.expression.legalRawModelIdentifier(context: context)
+                default:
+                    break
+                }
+            }
+            guard let form, let column else { return nil }
+            return .init(expr: expr, value: .init(form: form, column: column))
+        }
     }
 }
 
@@ -239,7 +318,7 @@ extension ModelMacro {
             fields.remove(at: pkIndex)
         }
         for field in fields {
-            if let dataType = field.postgresDataType?.swiftDataType {
+            if let dataType = field.normalizedPostgresSwiftDataType {
                 safetyString += "\n        var \(field.variableName): KeyPath<\(constructName), \(dataType)\(field.isRequired ? "" : "?")> { \\\(constructName).\(field.variableName) }"
             } else {
                 // TODO: show compiler diagnostic

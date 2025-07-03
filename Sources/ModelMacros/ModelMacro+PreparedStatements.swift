@@ -36,7 +36,8 @@ extension ModelMacro {
         let allColumnsJoined = fields.map { $0.columnName }.joined(separator: ", ")
         let insertableFields = fields.insertableFields
         let insertFieldsJoined = insertableFields.map { $0.columnName }.joined(separator: ", ")
-        let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertableFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")))"
+        let insertableFieldPlaceholders = insertableFields.enumerated().map({ "$\($0.offset+1)" }).joined(separator: ", ")
+        let insertSQL = "INSERT INTO \(schemaTable) (\(insertFieldsJoined)) VALUES (\(insertableFieldPlaceholders))"
         preparedStatements.append(.init(name: "insert",
             parameters: insertableFields,
             returnedColumns: [],
@@ -107,8 +108,22 @@ extension ModelMacro {
         preparedStatements.append(.init(
             name: "selectAllWithLimitAndOffset",
             parameters: [
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")), columnName: "limit", variableName: "", postgresDataType: .integer, behavior: []),
-                .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")), columnName: "offset", variableName: "", postgresDataType: .integer, behavior: [])
+                .init(
+                    expr: ExprSyntax(StringLiteralExprSyntax(content: "limit")),
+                    initializer: nil,
+                    columnName: "limit",
+                    variableName: "",
+                    postgresDataType: .integer,
+                    behavior: []
+                ),
+                .init(
+                    expr: ExprSyntax(StringLiteralExprSyntax(content: "offset")),
+                    initializer: nil,
+                    columnName: "offset",
+                    variableName: "",
+                    postgresDataType: .integer,
+                    behavior: []
+                )
             ],
             returnedColumns: fields,
             sql: selectWithLimitAndOffsetSQL
@@ -120,7 +135,14 @@ extension ModelMacro {
                 preparedStatements.append(.init(
                     name: "selectAllWhere\(name)Equals",
                     parameters: [
-                        .init(expr: ExprSyntax(StringLiteralExprSyntax(content: "")), columnName: field.columnName, variableName: field.variableName, postgresDataType: field.postgresDataType, behavior: [.dontCreatePreparedStatements])
+                        .init(
+                            expr: ExprSyntax(StringLiteralExprSyntax(content: "")),
+                            initializer: field.initializer,
+                            columnName: field.columnName,
+                            variableName: field.variableName,
+                            postgresDataType: field.postgresDataType,
+                            behavior: [.dontCreatePreparedStatements]
+                        )
                     ],
                     returnedColumns: fields, sql: sql
                 ))
@@ -158,9 +180,9 @@ extension ModelMacro {
         var parameterSwiftDataTypes = [String]()
         var parameterPostgresDataTypes = [String]()
         for param in statement.parameters {
-            if let dataType = param.postgresDataType {
+            if let dataType = param.postgresDataType, let normalizedDataType = param.normalizedPostgresSwiftDataType {
                 let isRequired = param.isRequired
-                parameterSwiftDataTypes.append(dataType.swiftDataType + (isRequired ? "" : "?"))
+                parameterSwiftDataTypes.append(normalizedDataType + (isRequired ? "" : "?"))
                 parameterPostgresDataTypes.append(dataType.name)
             }
         }

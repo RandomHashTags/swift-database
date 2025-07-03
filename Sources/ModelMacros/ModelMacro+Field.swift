@@ -8,6 +8,7 @@ import SwiftSyntaxMacros
 extension ModelRevision.Column {
     struct Compiled: Equatable {
         let expr:ExprSyntax
+        let initializer:String?
         var columnName:String
         var variableName:String
         var constraints:[Constraint] = [.notNull]
@@ -21,6 +22,13 @@ extension ModelRevision.Column {
 
         var formattedName: String {
             columnName[columnName.startIndex].uppercased() + columnName[columnName.index(after: columnName.startIndex)...]
+        }
+
+        var normalizedPostgresSwiftDataType: String? {
+            if postgresDataType == .bytea && initializer == "uint8" {
+                return "PostgresUInt8DataType"
+            }
+            return postgresDataType?.swiftDataType
         }
     }
     static func parse(
@@ -38,8 +46,8 @@ extension ModelRevision.Column {
         var postgresDataType:PostgresDataType? = nil
         var defaultValue:String? = nil
         var behavior:Set<Behavior> = defaultBehavior
-        let declName = functionCall.calledExpression.memberAccess?.declName.baseName.text
-        switch declName {
+        let initializer = functionCall.calledExpression.memberAccess?.declName.baseName.text
+        switch initializer {
         case "init":
             break
         case "optional":
@@ -80,6 +88,8 @@ extension ModelRevision.Column {
             postgresDataType = .doublePrecision
         case "float":
             postgresDataType = .real
+        case "uint8":
+            postgresDataType = .bytea
         case "int16":
             postgresDataType = .smallint
         case "int32":
@@ -106,7 +116,7 @@ extension ModelRevision.Column {
                 }
                 postgresDataType = .timestampNoTimeZone(precision: value)
             }
-            switch declName {
+            switch initializer {
             case "creationTimestamp":
                 columnName = "created"
                 defaultValue = .sqlNow()
@@ -117,7 +127,7 @@ extension ModelRevision.Column {
                 ])
             case "deletionTimestamp":
                 columnName = "deleted"
-                constraints.removeAll(where: { disallowedOptionalConstraints.contains($0) })
+                constraints = []
                 behavior.formUnion([
                     .dontCreatePreparedStatements,
                     .notInsertable,
@@ -126,7 +136,7 @@ extension ModelRevision.Column {
                 ])
             case "restorationTimestamp":
                 columnName = "restored"
-                constraints.removeAll(where: { disallowedOptionalConstraints.contains($0) })
+                constraints = []
                 behavior.formUnion([
                     .dontCreatePreparedStatements,
                     .notInsertable,
@@ -154,6 +164,7 @@ extension ModelRevision.Column {
         return parse(
             context: context,
             expr: expr,
+            initializer: initializer,
             functionCall: functionCall,
             columnName: columnName,
             constraints: constraints,
@@ -165,6 +176,7 @@ extension ModelRevision.Column {
     private static func parse(
         context: some MacroExpansionContext,
         expr: ExprSyntax,
+        initializer: String?,
         functionCall: FunctionCallExprSyntax,
         columnName: String?,
         constraints: [Constraint],
@@ -231,6 +243,7 @@ extension ModelRevision.Column {
         guard let columnName else { return nil }
         return .init(
             expr: expr,
+            initializer: initializer,
             columnName: columnName,
             variableName: variableName ?? columnName,
             constraints: constraints,
