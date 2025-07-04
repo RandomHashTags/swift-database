@@ -1,3 +1,3 @@
 
-public protocol PreparedStatementProtocol: Sendable {
+public protocol PreparedStatementProtocol: Sendable, ~Copyable {
 }
