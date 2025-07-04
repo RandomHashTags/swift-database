@@ -1,12 +1,8 @@
 
 import Logging
 import SQLBlueprint
-import SwiftDatabaseBlueprint
 
-public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQueryableProtocol, ~Copyable where RawMessage == PostgresRawMessage, QueryMessage: PostgresQueryMessageProtocol {
-    @inlinable
-    func readMessage() async throws -> RawMessage
-
+public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQueryableProtocol, ~Copyable where RawMessage: PostgresRawMessageProtocol, QueryMessage: PostgresQueryMessageProtocol {
     @inlinable
     func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) async throws
 
@@ -20,17 +16,7 @@ public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQuery
 extension PostgresConnectionProtocol {
     @inlinable
     public func readMessage() async throws -> RawMessage {
-        let headerBuffer = try await receive(length: 5)
-        guard headerBuffer.count == 5 else {
-            throw PostgresError.readMessage("headerBuffer.count (\(headerBuffer.count)) != 5")
-        }
-        let type = headerBuffer[0]
-        let length:Int32 = headerBuffer.loadUnalignedIntBigEndian(offset: 1) - 4
-        let body = try await receive(length: Int(length))
-        #if DEBUG
-        logger.info("Received message of type \(type) with body of length \(length)")
-        #endif
-        return RawMessage(type: type, bodyCount: length, body: body)
+        return try await RawMessage.read(on: self)
     }
 }
 

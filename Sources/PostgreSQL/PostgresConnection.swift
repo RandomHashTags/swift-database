@@ -23,6 +23,7 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 public struct PostgresConnection: PostgresConnectionProtocol {
+    public typealias RawMessage = PostgresRawMessage
     public typealias QueryMessage = PostgresQueryMessage
 
     @usableFromInline
