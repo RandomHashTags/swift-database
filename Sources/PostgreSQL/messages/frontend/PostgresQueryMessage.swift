@@ -87,7 +87,7 @@ extension PostgresQueryMessage {
         }
 
         @inlinable
-        public func waitUntilReadyForQuery<T: PostgresConnectionProtocol & ~Copyable>(
+        public func readUntilReadyForQuery<T: PostgresConnectionProtocol & ~Copyable>(
             on connection: inout T,
             _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
         ) async throws {
@@ -110,7 +110,7 @@ extension PostgresQueryMessage {
             default:
                 return
             }
-            try await connection.waitUntilReadyForQuery(onMessage)
+            try await connection.readUntilReadyForQuery(onMessage)
         }
 
         @inlinable

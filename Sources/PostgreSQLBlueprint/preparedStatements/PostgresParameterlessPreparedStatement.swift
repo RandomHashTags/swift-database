@@ -21,7 +21,7 @@ extension PostgresParameterlessPreparedStatement {
     public func prepare<T: PostgresQueryableProtocol & ~Copyable>(
         on connection: inout T
     ) async throws -> T.QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: prepareSQL)
+        return try await connection.query(unsafeSQL: prepareSQL, { _ in })
     }
 }
 
@@ -33,6 +33,6 @@ extension PostgresParameterlessPreparedStatement {
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> T.QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)")
+        return try await connection.query(unsafeSQL: (explain ? "EXPLAIN " : "") + (analyze ? "ANALYZE " : "") + "EXECUTE \(name)", { _ in })
     }
 }

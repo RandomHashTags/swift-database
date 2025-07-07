@@ -161,7 +161,6 @@ extension PostgresConnection {
 extension PostgresConnection {
     @inlinable
     mutating func authenticate() async throws {
-        let logger = logger
         var authenticationStatus = AuthenticationStatus.loading
         while authenticationStatus == .loading {
             let msg = try await readMessage()
@@ -186,15 +185,16 @@ extension PostgresConnection {
         #if DEBUG
         logger.notice("authentication successful")
         #endif
+        let logger = logger
         var _configuration = _configuration
         var backendKeyData:PostgresBackendKeyDataMessage? = nil
-        try await waitUntilReadyForQuery { msg in
+        try await readUntilReadyForQuery { msg in
             switch msg.type {
             case PostgresMessageBackendType.backendKeyData.rawValue:
                 backendKeyData = try msg.backendKeyData(logger: logger)
             case PostgresMessageBackendType.errorResponse.rawValue:
                 let response = try msg.errorResponse(logger: logger)
-                throw PostgresError.authentication("waitUntilReadyForQuery;received errorResponse: \(response.values)")
+                throw PostgresError.authentication("readUntilReadyForQuery;received errorResponse: \(response.values)")
             case PostgresMessageBackendType.noticeResponse.rawValue:
                 let response = try msg.noticeResponse(logger: logger)
                 logger.warning("received notice response: \(response)")
@@ -202,7 +202,7 @@ extension PostgresConnection {
                 let response = try msg.parameterStatus(logger: logger)
                 _configuration.update(response)
             default:
-                throw PostgresError.authentication("waitUntilReadyForQuery;unhandled message type: \(msg.type)")
+                throw PostgresError.authentication("readUntilReadyForQuery;unhandled message type: \(msg.type)")
             }
         }
         self._configuration = _configuration
@@ -213,11 +213,11 @@ extension PostgresConnection {
 // MARK: Wait until R4Q
 extension PostgresConnection {
     @inlinable
-    public mutating func waitUntilReadyForQuery(
-        _ onMessage: (PostgresRawMessage) throws -> Void = { _ in }
+    public mutating func readUntilReadyForQuery(
+        _ onMessage: (PostgresRawMessage) throws -> Void
     ) async throws {
         #if DEBUG
-        logger.notice("waiting until a Ready For Query message is received...")
+        logger.notice("reading until a Ready For Query message is received...")
         #endif
         var ready = false
         while !ready {
@@ -254,13 +254,16 @@ extension PostgresConnection {
 // MARK: Query
 extension PostgresConnection {
     @inlinable
-    public mutating func query(unsafeSQL: String) async throws -> QueryMessage.Response {
+    public mutating func query(
+        unsafeSQL: String,
+        _ onMessage: (RawMessage) throws -> Void
+    ) async throws -> QueryMessage.Response {
         var payload = RawMessage.query(unsafeSQL: unsafeSQL)
         try await sendMessage(&payload)
         let msg = try await readMessage()
         let response = try QueryMessage.Response.parse(logger: logger, msg: msg)
         if PostgresMessageBackendType(rawValue: msg.type)?.isFinalMessage ?? false {
-            try await waitUntilReadyForQuery()
+            try await readUntilReadyForQuery(onMessage)
         }
         return response
     }

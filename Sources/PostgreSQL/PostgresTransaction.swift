@@ -27,7 +27,7 @@ extension PostgresTransaction {
     @discardableResult
     @inlinable
     mutating func begin() async throws -> QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: "BEGIN")
+        return try await query(unsafeSQL: "BEGIN", { _ in })
     }
 }
 
@@ -36,7 +36,7 @@ extension PostgresTransaction {
     @discardableResult
     @inlinable
     mutating func commit() async throws -> QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: "COMMIT")
+        return try await query(unsafeSQL: "COMMIT", { _ in })
     }
 }
 
@@ -44,8 +44,11 @@ extension PostgresTransaction {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    public mutating func query(unsafeSQL: String) async throws -> QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: unsafeSQL)
+    public mutating func query(
+        unsafeSQL: String,
+        _ onMessage: (RawMessage) throws -> Void
+    ) async throws -> QueryMessage.ConcreteResponse {
+        return try await connection.query(unsafeSQL: unsafeSQL, onMessage)
     }
 }
 
@@ -54,13 +57,13 @@ extension PostgresTransaction {
     @discardableResult
     @inlinable
     mutating func rollback() async throws -> QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: "ROLLBACK")
+        return try await query(unsafeSQL: "ROLLBACK", { _ in })
     }
 
     @discardableResult
     @inlinable
     public mutating func rollbackTo<T: StringProtocol>(savepoint: T) async throws -> QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: "ROLLBACK TO " + savepoint)
+        return try await query(unsafeSQL: "ROLLBACK TO " + savepoint, { _ in })
     }
 }
 
@@ -69,7 +72,7 @@ extension PostgresTransaction {
     @discardableResult
     @inlinable
     public mutating func savepoint<T: StringProtocol>(named: T) async throws -> QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: "SAVEPOINT " + named)
+        return try await query(unsafeSQL: "SAVEPOINT " + named, { _ in })
     }
 }
 

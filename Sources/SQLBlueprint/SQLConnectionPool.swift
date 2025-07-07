@@ -87,9 +87,12 @@ extension SQLConnectionPool {
 
 // MARK: Query
 extension SQLConnectionPool {
-    public func query(_ sql: String, _ closure: (T.RawMessage) async throws -> Void) async throws -> T.QueryMessage.ConcreteResponse {
+    public func query(
+        sql: String,
+        _ onMessage: @Sendable (T.RawMessage) throws -> Void
+    ) async throws -> T.QueryMessage.ConcreteResponse {
         var connection = try await aquire()
         defer { release(connection) }
-        return try await connection.query(unsafeSQL: sql)
+        return try await connection.query(unsafeSQL: sql, onMessage)
     }
 }

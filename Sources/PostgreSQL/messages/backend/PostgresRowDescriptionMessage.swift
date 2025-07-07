@@ -101,7 +101,7 @@ extension PostgresRowDescriptionMessage {
     ) async throws -> [T?] {
         let logger = queryable.logger
         var values = [T?]()
-        try await queryable.waitUntilReadyForQuery { msg in
+        try await queryable.readUntilReadyForQuery { msg in
             let response = try Queryable.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
             if let dataRow = response.asDataRow() {
                 values.append(try dataRow.decode(as: decodable))
@@ -118,7 +118,7 @@ extension PostgresRowDescriptionMessage {
         let logger = connection.logger
         var values = InlineArray<count, T?>(repeating: nil)
         var i = 0
-        try await connection.waitUntilReadyForQuery { msg in
+        try await connection.readUntilReadyForQuery { msg in
             let response = try Connection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
             if let dataRow = response.asDataRow() {
                 values[i] = try dataRow.decode(as: decodable)

@@ -11,7 +11,7 @@ public protocol PostgresQueryMessageResponseProtocol: SQLQueryMessageResponsePro
         msg: PostgresRawMessage
     ) throws -> Self
 
-    func waitUntilReadyForQuery<T: PostgresConnectionProtocol & ~Copyable>(
+    func readUntilReadyForQuery<T: PostgresConnectionProtocol & ~Copyable>(
         on connection: inout T,
         _ onMessage: (PostgresRawMessage) throws -> Void
     ) async throws

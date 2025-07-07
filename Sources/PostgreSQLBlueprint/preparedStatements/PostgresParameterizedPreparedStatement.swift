@@ -21,7 +21,7 @@ extension PostgresParameterizedPreparedStatement {
     public func prepare<T: SQLQueryableProtocol & ~Copyable>(
         on connection: inout T
     ) async throws -> T.QueryMessage.ConcreteResponse {
-        return try await connection.query(unsafeSQL: prepareSQL)
+        return try await connection.query(unsafeSQL: prepareSQL, { _ in })
     }
 }
 
@@ -59,6 +59,6 @@ extension PostgresParameterizedPreparedStatement {
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> T.QueryMessage.ConcreteResponse {
-        return try await queryable.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze))
+        return try await queryable.query(unsafeSQL: executionSQL(parameters: (repeat each parameters), explain: explain, analyze: analyze), { _ in })
     }
 }

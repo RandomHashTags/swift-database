@@ -8,6 +8,7 @@ public protocol SQLQueryableProtocol: Sendable, ~Copyable {
     var logger: Logger { get }
 
     mutating func query(
-        unsafeSQL: String
+        unsafeSQL: String,
+        _ onMessage: (RawMessage) throws -> Void
     ) async throws -> QueryMessage.ConcreteResponse
 }
