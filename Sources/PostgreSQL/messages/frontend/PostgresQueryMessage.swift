@@ -102,7 +102,7 @@ extension PostgresQueryMessage {
                     .portalSuspended:
                 break
             case .unknown(let msg):
-                if let type = PostgresRawMessage.BackendType(rawValue: msg.type), type.isFinalMessage {
+                if let type = PostgresMessageBackendType(rawValue: msg.type), type.isFinalMessage {
                     break
                 } else {
                     return
@@ -119,57 +119,58 @@ extension PostgresQueryMessage {
             msg: PostgresRawMessage
         ) throws -> Self {
             switch msg.type {
-            case PostgresRawMessage.BackendType.bindComplete.rawValue:
+            case PostgresMessageBackendType.bindComplete.rawValue:
                 return try .bindComplete(msg.bindComplete(logger: logger))
-            case PostgresRawMessage.BackendType.closeComplete.rawValue:
+            case PostgresMessageBackendType.closeComplete.rawValue:
                 return try .closeComplete(msg.closeComplete(logger: logger))
-            case PostgresRawMessage.BackendType.commandComplete.rawValue:
+            case PostgresMessageBackendType.commandComplete.rawValue:
                 return try .commandComplete(msg.commandComplete(logger: logger))
-            case PostgresRawMessage.BackendType.copyInResponse.rawValue:
+            case PostgresMessageBackendType.copyInResponse.rawValue:
                 return try .copyInResponse(msg.copyInResponse(logger: logger))
-            case PostgresRawMessage.BackendType.copyOutResponse.rawValue:
+            case PostgresMessageBackendType.copyOutResponse.rawValue:
                 return try .copyOutResponse(msg.copyOutResponse(logger: logger))
-            case PostgresRawMessage.BackendType.dataRow.rawValue:
+            case PostgresMessageBackendType.dataRow.rawValue:
                 return try .dataRow(msg.dataRow(logger: logger))
-            case PostgresRawMessage.BackendType.emptyQueryResponse.rawValue:
+            case PostgresMessageBackendType.emptyQueryResponse.rawValue:
                 return try .emptyQueryResponse(msg.emptyQueryResponse(logger: logger))
-            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+            case PostgresMessageBackendType.errorResponse.rawValue:
                 return try .errorResponse(msg.errorResponse(logger: logger))
-            case PostgresRawMessage.BackendType.functionCallResponse.rawValue:
+            case PostgresMessageBackendType.functionCallResponse.rawValue:
                 return try .functionCallResponse(msg.functionCallResponse(logger: logger))
-            case PostgresRawMessage.BackendType.noData.rawValue:
+            case PostgresMessageBackendType.noData.rawValue:
                 return try .noData(msg.noData(logger: logger))
-            case PostgresRawMessage.BackendType.noticeResponse.rawValue:
+            case PostgresMessageBackendType.noticeResponse.rawValue:
                 return try .noticeResponse(msg.noticeResponse(logger: logger))
-            case PostgresRawMessage.BackendType.parseComplete.rawValue:
+            case PostgresMessageBackendType.parseComplete.rawValue:
                 return try .parseComplete(msg.parseComplete(logger: logger))
-            case PostgresRawMessage.BackendType.portalSuspended.rawValue:
+            case PostgresMessageBackendType.portalSuspended.rawValue:
                 return try .portalSuspended(msg.portalSuspend(logger: logger))
-            case PostgresRawMessage.BackendType.readyForQuery.rawValue:
+            case PostgresMessageBackendType.readyForQuery.rawValue:
                 return try .readyForQuery(msg.readyForQuery(logger: logger))
-            case PostgresRawMessage.BackendType.rowDescription.rawValue:
+            case PostgresMessageBackendType.rowDescription.rawValue:
                 return try .rowDescription(msg.rowDescription(logger: logger))
             default:
                 logger.warning("unknown message type: \(msg.type)")
                 return .unknown(msg)
             }
         }
-
-        @inlinable
-        public func asDataRow() -> DataRowMessage? {
-            if case let .dataRow(msg) = self {
-                return msg
-            }
-            return nil
+    }
+}
+extension PostgresQueryMessage.Response {
+    @inlinable
+    public func asDataRow() -> DataRowMessage? {
+        if case let .dataRow(msg) = self {
+            return msg
         }
+        return nil
+    }
 
-        @inlinable
-        public func asRowDescription() -> RowDescriptionMessage? {
-            if case let .rowDescription(msg) = self {
-                return msg
-            }
-            return nil
+    @inlinable
+    public func asRowDescription() -> RowDescriptionMessage? {
+        if case let .rowDescription(msg) = self {
+            return msg
         }
+        return nil
     }
 }
 

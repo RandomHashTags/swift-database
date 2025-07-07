@@ -26,7 +26,7 @@ extension PostgresRawMessage {
     @inlinable
     public static func read<T: PostgresConnectionProtocol>(
         on connection: T
-    ) async throws -> PostgresRawMessage {
+    ) async throws -> Self {
         let headerBuffer = try await connection.receive(length: 5)
         guard headerBuffer.count == 5 else {
             throw PostgresError.readMessage("headerBuffer.count (\(headerBuffer.count)) != 5")

@@ -21,8 +21,6 @@ import Logging
 import SwiftDatabaseBlueprint
 
 public protocol SQLConnectionProtocol: SQLQueryableProtocol, ~Copyable {
-    associatedtype RawMessage: SQLRawMessageProtocol
-
     init()
 
     var fileDescriptor: Int32 { get }

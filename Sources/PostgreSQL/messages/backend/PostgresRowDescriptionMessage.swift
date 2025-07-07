@@ -119,13 +119,10 @@ extension PostgresRowDescriptionMessage {
         var values = InlineArray<count, T?>(repeating: nil)
         var i = 0
         try await connection.waitUntilReadyForQuery { msg in
-            let response = try PostgresConnection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
-            switch response {
-            case .dataRow(let dataRow):
+            let response = try Connection.QueryMessage.ConcreteResponse.parse(logger: logger, msg: msg)
+            if let dataRow = response.asDataRow() {
                 values[i] = try dataRow.decode(as: decodable)
                 i += 1
-            default:
-                break
             }
         }
         return values

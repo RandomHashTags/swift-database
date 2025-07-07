@@ -23,7 +23,6 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 public struct PostgresConnection: PostgresConnectionProtocol {
-    public typealias RawMessage = PostgresRawMessage
     public typealias QueryMessage = PostgresQueryMessage
 
     @usableFromInline
@@ -167,7 +166,7 @@ extension PostgresConnection {
         while authenticationStatus == .loading {
             let msg = try await readMessage()
             switch msg.type {
-            case PostgresRawMessage.BackendType.authentication.rawValue:
+            case PostgresMessageBackendType.authentication.rawValue:
                 let auth = try msg.authentication(logger: logger)
                 switch auth {
                 case .ok:
@@ -175,10 +174,10 @@ extension PostgresConnection {
                 default:
                     throw PostgresError.authentication("not yet supported: \(auth)")
                 }
-            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+            case PostgresMessageBackendType.errorResponse.rawValue:
                 let response = try msg.errorResponse(logger: logger)
                 throw PostgresError.authentication("received errorResponse: \(response.values)")
-            case PostgresRawMessage.BackendType.negotiateProtocolVersion.rawValue:
+            case PostgresMessageBackendType.negotiateProtocolVersion.rawValue:
                 throw PostgresError.authentication("not yet supported: protocol version negotiation")
             default:
                 throw PostgresError.authentication("unhandled message type: \(msg.type)")
@@ -191,15 +190,15 @@ extension PostgresConnection {
         var backendKeyData:PostgresBackendKeyDataMessage? = nil
         try await waitUntilReadyForQuery { msg in
             switch msg.type {
-            case PostgresRawMessage.BackendType.backendKeyData.rawValue:
+            case PostgresMessageBackendType.backendKeyData.rawValue:
                 backendKeyData = try msg.backendKeyData(logger: logger)
-            case PostgresRawMessage.BackendType.errorResponse.rawValue:
+            case PostgresMessageBackendType.errorResponse.rawValue:
                 let response = try msg.errorResponse(logger: logger)
                 throw PostgresError.authentication("waitUntilReadyForQuery;received errorResponse: \(response.values)")
-            case PostgresRawMessage.BackendType.noticeResponse.rawValue:
+            case PostgresMessageBackendType.noticeResponse.rawValue:
                 let response = try msg.noticeResponse(logger: logger)
                 logger.warning("received notice response: \(response)")
-            case PostgresRawMessage.BackendType.parameterStatus.rawValue:
+            case PostgresMessageBackendType.parameterStatus.rawValue:
                 let response = try msg.parameterStatus(logger: logger)
                 _configuration.update(response)
             default:
@@ -223,7 +222,7 @@ extension PostgresConnection {
         var ready = false
         while !ready {
             let msg = try await readMessage()
-            if msg.type == PostgresRawMessage.BackendType.readyForQuery.rawValue {
+            if msg.type == PostgresMessageBackendType.readyForQuery.rawValue {
                 ready = true
                 break
             }
@@ -260,7 +259,7 @@ extension PostgresConnection {
         try await sendMessage(&payload)
         let msg = try await readMessage()
         let response = try QueryMessage.Response.parse(logger: logger, msg: msg)
-        if PostgresRawMessage.BackendType(rawValue: msg.type)?.isFinalMessage ?? false {
+        if PostgresMessageBackendType(rawValue: msg.type)?.isFinalMessage ?? false {
             try await waitUntilReadyForQuery()
         }
         return response
