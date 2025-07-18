@@ -11,29 +11,44 @@ extension ModelMacro {
         schema: String,
         fields: [ModelRevision.Column.Compiled]
     ) -> String {
-        var string = ""
+        var values = [String]()
         if supportedDatabases.contains(.postgreSQL) {
-            string += postgresCreateOnConnection(context: context, construct: construct, fields: fields)
+            values.append(contentsOf: postgresConvenienceLogic(context: context, construct: construct, fields: fields))
         }
-        if !string.isEmpty {
-            string = "extension " + construct.name + " {\n" + string + "\n}"
+        var string = ""
+        if !values.isEmpty {
+            string += "extension " + construct.name + " {\n" + values.joined(separator: "\n\n") + "\n}\n"
         }
+        
         return string
     }
 }
 
 // MARK: Postgres
 extension ModelMacro {
-    private static func postgresCreateOnConnection(
+    private static func postgresConvenienceLogic(
+        context: some MacroExpansionContext,
+        construct: ModelConstruct,
+        fields: [ModelRevision.Column.Compiled]
+    ) -> [String] {
+        var valid = true
+        for field in fields {
+            if field.postgresDataType == nil {
+                context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
+                valid = false
+            }
+        }
+        guard valid else { return [] }
+        return [
+            "// MARK: Postgres CRUD\n" + postgresCRUD(context: context, construct: construct, fields: fields),
+            "// MARK: Postgres Decode\n" + postgresDecode(context: context, fields: fields)
+        ]
+    }
+    private static func postgresCRUD(
         context: some MacroExpansionContext,
         construct: ModelConstruct,
         fields: [ModelRevision.Column.Compiled]
     ) -> String {
-        for field in fields {
-            if field.postgresDataType == nil {
-                context.diagnose(Diagnostic(node: field.expr, message: DiagnosticMsg.modelRevisionFieldMissingPostgresDataType()))
-            }
-        }
         let primaryKeyColumnName:String?
         let requireID:String
         let primaryKeyString:String
@@ -129,5 +144,89 @@ extension ModelMacro {
             }
         }
         return string
+    }
+    private static func postgresDecode(
+        context: some MacroExpansionContext,
+        fields: [ModelRevision.Column.Compiled]
+    ) -> String {
+        var initializer = [String]()
+        var string = "@inlinable\npublic static func postgresDecode(columns: [ByteBuffer?]) throws -> Self? {\n"
+        string += "guard columns.count == \(fields.count) else { return nil }\n"
+        var primaryKeyIndex:Int? = nil
+        if let pki = fields.firstIndex(where: { $0.constraints.contains(.primaryKey) }) {
+            primaryKeyIndex = pki
+            let pkiVariableName = fields[pki].variableName
+            string += "guard let \(pkiVariableName) = IDValue(columns[\(pki)]!.utf8String()) else { return nil }\n"
+            initializer.append(pkiVariableName)
+        }
+        for (index, field) in fields.enumerated() {
+            if index != primaryKeyIndex {
+                if let decoded = postgresDecoded(context: context, index: index, field: field) {
+                    string += decoded
+                    initializer.append(field.variableName)
+                }
+            }
+        }
+        string += "return .init(\n" + initializer.map({ "\($0): \($0)" }).joined(separator: ",\n") + "\n)"
+        return string + "\n}\n"
+    }
+    private static func postgresDecoded(
+        context: some MacroExpansionContext,
+        index: Int,
+        field: ModelRevision.Column.Compiled
+    ) -> String? {
+        let dataType = field.postgresDataType!
+        let normalizedPostgresSwiftDataType = field.normalizedPostgresSwiftDataType!
+        let variableName = field.variableName
+        let isRequired = field.isRequired
+        let wrapSymbol = isRequired ? "!" : "?"
+        var decoded = "let \(variableName) = columns[\(index)]\(wrapSymbol).utf8String()"
+        switch normalizedPostgresSwiftDataType {
+        case "Bool":
+            decoded += ".first == \"t\""
+        case "Date",
+                "Int16",
+                "Int32",
+                "Int64":
+            decoded = postgresIfLetVColumn(isRequired: isRequired, dataType: dataType, index: index, variableName: variableName, typeAnnotation: normalizedPostgresSwiftDataType)
+        case "String":
+            break
+        case "PostgresUInt8DataType":
+            decoded = """
+            let \(variableName):PostgresUInt8DataType
+            let \(variableName)Dehexed = columns[\(index)]\(wrapSymbol).postgresBYTEAHexadecimal()
+            if let v = UInt8(\(variableName)Dehexed) {
+                \(variableName) = PostgresUInt8DataType(integerLiteral: v)
+            } else {
+                \(variableName) = 0
+            }
+            """
+        default:
+            context.diagnose(DiagnosticMsg.somethingWentWrong(expr: field.expr, message: "field.normalizedPostgresSwiftDataType=\(field.normalizedPostgresSwiftDataType)"))
+            return nil
+        }
+        return decoded + "\n"
+    }
+    private static func postgresIfLetVColumn(
+        isRequired: Bool,
+        dataType: PostgresDataType,
+        index: Int,
+        variableName: String,
+        typeAnnotation: String
+    ) -> String {
+        var decoded:String
+        if isRequired {
+            decoded = "guard let \(variableName) = try \(typeAnnotation).postgresDecode(columns[\(index)]!.utf8String(), as: .\(dataType)) else { return nil }\n"
+        } else {
+            decoded = """
+            let \(variableName):\(typeAnnotation)?
+            if let v = columns[\(index)]?.utf8String() {
+                \(variableName) = try \(typeAnnotation).postgresDecode(v, as: .\(dataType))
+            } else {
+                \(variableName) = nil
+            }
+            """
+        }
+        return decoded
     }
 }
