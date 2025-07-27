@@ -24,8 +24,8 @@ public struct PostgresRawMessage: PostgresRawMessageProtocol {
 // MARK: Read
 extension PostgresRawMessage {
     @inlinable
-    public static func read<T: PostgresConnectionProtocol>(
-        on connection: T
+    public static func read(
+        on connection: some PostgresConnectionProtocol
     ) async throws -> Self {
         let headerBuffer = try await connection.receive(length: 5)
         guard headerBuffer.count == 5 else {

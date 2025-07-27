@@ -53,12 +53,12 @@ extension ModelRevision {
             )
         }
 
-        public init<T: FixedWidthInteger>(
+        public init(
             name: String,
             variableName: String? = nil,
             constraints: Set<Constraint> = defaultConstraints,
             postgresDataType: PostgresDataType? = nil,
-            defaultValue: T?,
+            defaultValue: (some FixedWidthInteger)?,
             behavior: Set<Behavior> = defaultBehavior
         ) {
             let dv:String?

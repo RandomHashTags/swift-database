@@ -29,21 +29,21 @@ extension ModelCondition {
         public let value:String
 
         @inlinable
-        public init<T: StringProtocol>(
+        public init(
             field: String,
             operator: Operator,
-            value: T
+            value: some StringProtocol
         ) {
             self.field = field
             self.operator = `operator`
-            self.value = "'" + value + "'"
+            self.value = "'\(value)'"
         }
 
         @inlinable
-        public init<T: FixedWidthInteger>(
+        public init(
             field: String,
             operator: Operator,
-            value: T
+            value: some FixedWidthInteger
         ) {
             self.field = field
             self.operator = `operator`

@@ -171,7 +171,7 @@ extension ByteBuffer {
 // MARK: Write int
 extension ByteBuffer {
     @inlinable
-    public func writeIntBigEndian<T: FixedWidthInteger>(_ value: T, to index: inout Int) {
+    public func writeIntBigEndian(_ value: some FixedWidthInteger, to index: inout Int) {
         withUnsafeBytes(of: value.bigEndian, {
             $0.forEach {
                 self[index] = $0

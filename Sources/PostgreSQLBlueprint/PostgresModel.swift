@@ -2,14 +2,14 @@
 import Models
 
 public protocol PostgresModel: Model, ~Copyable, PostgresDataRowDecodable {
-    mutating func create<T: PostgresQueryableProtocol & ~Copyable>(
-        on queryable: inout T,
+    mutating func create(
+        on queryable: inout some PostgresQueryableProtocol & ~Copyable,
         explain: Bool,
         analyze: Bool
     ) async throws -> Self
 
-    mutating func update<T: PostgresQueryableProtocol & ~Copyable>(
-        on queryable: inout T,
+    mutating func update(
+        on queryable: inout some PostgresQueryableProtocol & ~Copyable,
         explain: Bool,
         analyze: Bool
     ) async throws -> Self

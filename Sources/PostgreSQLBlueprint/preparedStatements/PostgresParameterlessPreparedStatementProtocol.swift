@@ -12,8 +12,8 @@ public protocol PostgresParameterlessPreparedStatementProtocol: SQLParameterless
 // MARK: Convenience
 extension PostgresConnectionProtocol {
     @inlinable
-    public mutating func executePreparedStatement<T: PostgresParameterlessPreparedStatementProtocol & ~Copyable>(
-        _ statement: inout T,
+    public mutating func executePreparedStatement(
+        _ statement: inout some PostgresParameterlessPreparedStatementProtocol & ~Copyable,
         explain: Bool = false,
         analyze: Bool = false
     ) async throws -> QueryMessage.ConcreteResponse {

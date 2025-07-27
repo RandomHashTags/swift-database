@@ -72,8 +72,8 @@ extension ModelMacro {
             updatableFieldsJoined = pk.variableName + ", " + updatableFieldsJoined
         }
         let mutationKeyword = construct.isStruct ? "mutating " : ""
-        var string = "@discardableResult\n@inlinable\npublic \(mutationKeyword)func create<T: PostgresQueryableProtocol & ~Copyable>(\n"
-        string += "on queryable: inout T,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
+        var string = "@discardableResult\n@inlinable\npublic \(mutationKeyword)func create(\n"
+        string += "on queryable: inout some PostgresQueryableProtocol & ~Copyable,\nexplain: Bool = false,\nanalyze: Bool = false\n) async throws -> Self {\n"
         string += primaryKeyString
         string += "let response = try await PostgresPreparedStatements.insertReturning.execute(\non: &queryable,\nparameters: (\(insertableFieldsJoined)),\nexplain: explain,\nanalyze: analyze\n).requireNotError()\n"
         string += """
@@ -89,8 +89,8 @@ extension ModelMacro {
         string += """
         @discardableResult
         @inlinable
-        public \(mutationKeyword)func update<T: PostgresQueryableProtocol & ~Copyable>(
-            on queryable: inout T,
+        public \(mutationKeyword)func update(
+            on queryable: inout some PostgresQueryableProtocol & ~Copyable,
             explain: Bool = false,
             analyze: Bool = false
         ) async throws -> Self {
@@ -108,8 +108,8 @@ extension ModelMacro {
             string += """
             @discardableResult
             @inlinable
-            public \(mutationKeyword)func softDelete<T: PostgresQueryableProtocol & ~Copyable>(
-                on queryable: inout T,
+            public \(mutationKeyword)func softDelete(
+                on queryable: inout some PostgresQueryableProtocol & ~Copyable,
                 explain: Bool = false,
                 analyze: Bool = false
             ) async throws -> Self {
@@ -127,8 +127,8 @@ extension ModelMacro {
                 string += """
                 @discardableResult
                 @inlinable
-                public \(mutationKeyword)func restore<T: PostgresQueryableProtocol & ~Copyable>(
-                    on queryable: inout T,
+                public \(mutationKeyword)func restore(
+                    on queryable: inout some PostgresQueryableProtocol & ~Copyable,
                     explain: Bool = false,
                     analyze: Bool = false
                 ) async throws -> Self {

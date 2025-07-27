@@ -4,7 +4,7 @@ import SQLBlueprint
 import SwiftDatabaseBlueprint
 
 public protocol PostgresRawMessageProtocol: SQLRawMessageProtocol, ~Copyable {
-    static func read<T: PostgresConnectionProtocol>(
-        on connection: borrowing T
+    static func read(
+        on connection: borrowing some PostgresConnectionProtocol
     ) async throws -> Self
 }

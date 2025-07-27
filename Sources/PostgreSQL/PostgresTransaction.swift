@@ -62,7 +62,7 @@ extension PostgresTransaction {
 
     @discardableResult
     @inlinable
-    public mutating func rollbackTo<T: StringProtocol>(savepoint: T) async throws -> QueryMessage.ConcreteResponse {
+    public mutating func rollbackTo(savepoint: some StringProtocol) async throws -> QueryMessage.ConcreteResponse {
         return try await query(unsafeSQL: "ROLLBACK TO " + savepoint, { _ in })
     }
 }
@@ -71,7 +71,7 @@ extension PostgresTransaction {
 extension PostgresTransaction {
     @discardableResult
     @inlinable
-    public mutating func savepoint<T: StringProtocol>(named: T) async throws -> QueryMessage.ConcreteResponse {
+    public mutating func savepoint(named: some StringProtocol) async throws -> QueryMessage.ConcreteResponse {
         return try await query(unsafeSQL: "SAVEPOINT " + named, { _ in })
     }
 }

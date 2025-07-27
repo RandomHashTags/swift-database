@@ -4,11 +4,11 @@ import SQLBlueprint
 
 public protocol PostgresConnectionProtocol: SQLConnectionProtocol, PostgresQueryableProtocol, ~Copyable where RawMessage: PostgresRawMessageProtocol, QueryMessage: PostgresQueryMessageProtocol {
     @inlinable
-    func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) async throws
+    func sendMessage(_ message: inout some PostgresFrontendMessageProtocol) async throws
 
 
-    mutating func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
-        _ statement: inout T
+    mutating func queryPreparedStatement(
+        _ statement: inout some PostgresPreparedStatementProtocol & ~Copyable
     ) async throws -> QueryMessage.ConcreteResponse
 }
 
@@ -23,7 +23,7 @@ extension PostgresConnectionProtocol {
 // MARK: Send message
 extension PostgresConnectionProtocol {
     @inlinable
-    public func sendMessage<T: PostgresFrontendMessageProtocol>(_ message: inout T) async throws {
+    public func sendMessage(_ message: inout some PostgresFrontendMessageProtocol) async throws {
         #if DEBUG
         logger.info("Sending message: \(message)")
         #endif
@@ -34,8 +34,8 @@ extension PostgresConnectionProtocol {
 // MARK: Query prepared statement
 extension PostgresConnectionProtocol {
     @inlinable
-    public mutating func queryPreparedStatement<T: PostgresPreparedStatementProtocol & ~Copyable>(
-        _ statement: inout T
+    public mutating func queryPreparedStatement(
+        _ statement: inout some PostgresPreparedStatementProtocol & ~Copyable
     ) async throws -> QueryMessage.ConcreteResponse {
         return try await statement.prepare(on: &self)
     }

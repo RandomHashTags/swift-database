@@ -11,7 +11,7 @@ import ModelUtilities
 
 extension Date: PostgresDataDecodable {
     @inlinable
-    static func tripleInt<T: StringProtocol>(_ value: T, separator: Character) -> (Int, Int, Int)? {
+    static func tripleInt(_ value: some StringProtocol, separator: Character) -> (Int, Int, Int)? {
         let values = value.split(separator: separator)
         guard values.count == 3, let year = Int(values[0]), let month = Int(values[1]), let day = Int(values[2]) else { return nil }
         return (year, month, day)
