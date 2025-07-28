@@ -170,6 +170,13 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log")
             ]
         ),
+        // MARK: PostgreSQLBuilder
+        .target(
+            name: "PostgreSQLBuilder",
+            dependencies: [
+                "ModelUtilities"
+            ]
+        ),
         // MARK: PostgreSQL
         .target(
             name: "PostgreSQL",

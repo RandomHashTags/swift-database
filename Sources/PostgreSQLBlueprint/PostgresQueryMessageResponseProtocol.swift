@@ -12,7 +12,7 @@ public protocol PostgresQueryMessageResponseProtocol: SQLQueryMessageResponsePro
     ) throws -> Self
 
     func readUntilReadyForQuery(
-        on connection: inout some PostgresConnectionProtocol & ~Copyable,
+        on queryable: inout some PostgresQueryableProtocol & ~Copyable,
         _ onMessage: (PostgresRawMessage) throws -> Void
     ) async throws
 

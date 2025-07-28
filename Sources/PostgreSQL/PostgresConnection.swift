@@ -100,7 +100,7 @@ extension PostgresConnection {
     }
 
     @inlinable
-    mutating public func establishConnection(address: String, port: UInt16) throws {
+    public mutating func establishConnection(address: String, port: UInt16) throws {
         guard fileDescriptor == -1 else {
             throw PostgresError.connectionAlreadyEstablished()
         }
